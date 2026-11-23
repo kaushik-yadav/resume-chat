@@ -1,0 +1,3268 @@
+{
+ "at": "2026-11-23T13-38Z",
+ "repeats": 3,
+ "warmup": 3,
+ "test_cases": [
+  {
+   "message": "could you put my CV into French?",
+   "intent": "edit",
+   "agents": [
+    "translation"
+   ],
+   "slots": {
+    "target_locale": "fr-FR"
+   },
+   "memory": {}
+  },
+  {
+   "message": "I want a German version of my resume",
+   "intent": "edit",
+   "agents": [
+    "translation"
+   ],
+   "slots": {
+    "target_locale": "de-DE"
+   },
+   "memory": {}
+  },
+  {
+   "message": "tune my resume towards Amazon",
+   "intent": "edit",
+   "agents": [
+    "company_research"
+   ],
+   "slots": {
+    "target_company": "Amazon"
+   },
+   "memory": {}
+  },
+  {
+   "message": "I'm applying at Microsoft, adjust my resume",
+   "intent": "edit",
+   "agents": [
+    "company_research"
+   ],
+   "slots": {
+    "target_company": "Microsoft"
+   },
+   "memory": {}
+  },
+  {
+   "message": "strengthen the bullets in my experience",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement"
+   ],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "my summary is too long, trim it",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement"
+   ],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "which skills should I learn next?",
+   "intent": "question",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "is this resume good enough for FAANG?",
+   "intent": "question",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "fit my resume to the posting",
+   "intent": "edit",
+   "agents": [
+    "jd_matching"
+   ],
+   "slots": {},
+   "memory": {
+    "job_description": "Data Scientist, Payments Risk - Finlytics (fictional company)\n\nAbout the role\nFinlytics is hiring a Data Scientist to join the Payments Risk team. You will build models that\ndetect fraudulent transactions and help product teams make data-driven decisions.\n\nResponsibilities\n- Build, validate and deploy machine learning models for fraud detection and risk scoring\n- Design and analyze A/B tests and communicate results to product and engineering partners\n- Write production-quality Python and SQL; own data pipelines that feed models\n- Partner with engineers to serve models through low-latency APIs\n- Monitor model performance and data drift in production\n\nRequirements\n- 3+ years of experience in data science, analytics or ML engineering\n- Strong Python (pandas, scikit-learn) and SQL skills\n- Experience with experimentation and statistical inference\n- Experience with cloud data warehouses such as BigQuery or Snowflake\n- Clear communication with non-technical stakeholders\n\nNice to have\n- Experience in payments, fintech or fraud\n- Familiarity with Airflow or other orchestration tools\n- Experience with PyTorch or gradient boosting libraries (XGBoost, LightGBM)\n- Docker and AWS\n"
+   }
+  },
+  {
+   "message": "hello",
+   "intent": "chitchat",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Translate it to Japanese for jobs in Japan",
+   "intent": "edit",
+   "agents": [
+    "translation"
+   ],
+   "slots": {
+    "target_locale": "ja-JP"
+   },
+   "memory": {}
+  },
+  {
+   "message": "please make my education section cleaner",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement"
+   ],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Get my resume ready for a role at Netflix",
+   "intent": "edit",
+   "agents": [
+    "company_research"
+   ],
+   "slots": {
+    "target_company": "Netflix"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Adapt my resume to Atlassian's culture",
+   "intent": "edit",
+   "agents": [
+    "company_research"
+   ],
+   "slots": {
+    "target_company": "Atlassian"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Localize my CV for the job market in Spain",
+   "intent": "edit",
+   "agents": [
+    "translation"
+   ],
+   "slots": {
+    "target_locale": "es-ES"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Need this resume in Italian",
+   "intent": "edit",
+   "agents": [
+    "translation"
+   ],
+   "slots": {
+    "target_locale": "it-IT"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Can you rewrite my summary to sound more senior?",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement"
+   ],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Add metrics to my work experience bullets",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement"
+   ],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Tailor my experience to the job description I shared",
+   "intent": "edit",
+   "agents": [
+    "jd_matching"
+   ],
+   "slots": {},
+   "memory": {
+    "job_description": "Data Scientist, Payments Risk - Finlytics (fictional company)\n\nAbout the role\nFinlytics is hiring a Data Scientist to join the Payments Risk team. You will build models that\ndetect fraudulent transactions and help product teams make data-driven decisions.\n\nResponsibilities\n- Build, validate and deploy machine learning models for fraud detection and risk scoring\n- Design and analyze A/B tests and communicate results to product and engineering partners\n- Write production-quality Python and SQL; own data pipelines that feed models\n- Partner with engineers to serve models through low-latency APIs\n- Monitor model performance and data drift in production\n\nRequirements\n- 3+ years of experience in data science, analytics or ML engineering\n- Strong Python (pandas, scikit-learn) and SQL skills\n- Experience with experimentation and statistical inference\n- Experience with cloud data warehouses such as BigQuery or Snowflake\n- Clear communication with non-technical stakeholders\n\nNice to have\n- Experience in payments, fintech or fraud\n- Familiarity with Airflow or other orchestration tools\n- Experience with PyTorch or gradient boosting libraries (XGBoost, LightGBM)\n- Docker and AWS\n"
+   }
+  },
+  {
+   "message": "How well do I match the posting?",
+   "intent": "question",
+   "agents": [],
+   "slots": {},
+   "memory": {
+    "job_description": "Data Scientist, Payments Risk - Finlytics (fictional company)\n\nAbout the role\nFinlytics is hiring a Data Scientist to join the Payments Risk team. You will build models that\ndetect fraudulent transactions and help product teams make data-driven decisions.\n\nResponsibilities\n- Build, validate and deploy machine learning models for fraud detection and risk scoring\n- Design and analyze A/B tests and communicate results to product and engineering partners\n- Write production-quality Python and SQL; own data pipelines that feed models\n- Partner with engineers to serve models through low-latency APIs\n- Monitor model performance and data drift in production\n\nRequirements\n- 3+ years of experience in data science, analytics or ML engineering\n- Strong Python (pandas, scikit-learn) and SQL skills\n- Experience with experimentation and statistical inference\n- Experience with cloud data warehouses such as BigQuery or Snowflake\n- Clear communication with non-technical stakeholders\n\nNice to have\n- Experience in payments, fintech or fraud\n- Familiarity with Airflow or other orchestration tools\n- Experience with PyTorch or gradient boosting libraries (XGBoost, LightGBM)\n- Docker and AWS\n"
+   }
+  },
+  {
+   "message": "What would Google recruiters think of my resume?",
+   "intent": "question",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Is two pages too long for a resume?",
+   "intent": "question",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "redo",
+   "intent": "redo",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "revert that",
+   "intent": "undo",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "cheers, that's great",
+   "intent": "chitchat",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Optimize my resume for Spotify and then put it into Dutch",
+   "intent": "edit",
+   "agents": [
+    "company_research",
+    "translation"
+   ],
+   "slots": {
+    "target_company": "Spotify",
+    "target_locale": "nl-NL"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Translate my resume to Spanish for Mexico, then polish the skills section",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement",
+    "translation"
+   ],
+   "slots": {
+    "target_locale": "es-MX"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Make my resume stronger for a product manager role",
+   "intent": "edit",
+   "agents": [
+    "section_enhancement"
+   ],
+   "slots": {
+    "target_role": "Product Manager"
+   },
+   "memory": {}
+  },
+  {
+   "message": "Update my summary for this job description",
+   "intent": "clarify",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  },
+  {
+   "message": "Optimize it for the company",
+   "intent": "clarify",
+   "agents": [],
+   "slots": {},
+   "memory": {}
+  }
+ ],
+ "runs": {
+  "cascade": [
+   {
+    "case": "could you put my CV into French?",
+    "rep": 0,
+    "ms": 416.91099997842684,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "fr-FR"
+    ],
+    "billed_usd": 1.2e-06,
+    "incomplete_usd": 0.000249
+   },
+   {
+    "case": "I want a German version of my resume",
+    "rep": 0,
+    "ms": 405.7889999821782,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "de-DE"
+    ],
+    "billed_usd": 1.3499999999999998e-06,
+    "incomplete_usd": 0.0002493
+   },
+   {
+    "case": "tune my resume towards Amazon",
+    "rep": 0,
+    "ms": 1572.6566999801435,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Amazon",
+     ""
+    ],
+    "billed_usd": 0.0005681500000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I'm applying at Microsoft, adjust my resume",
+    "rep": 0,
+    "ms": 402.74479999789037,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Microsoft",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002499
+   },
+   {
+    "case": "strengthen the bullets in my experience",
+    "rep": 0,
+    "ms": 405.78719999757595,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.3499999999999998e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "my summary is too long, trim it",
+    "rep": 0,
+    "ms": 1184.770899999421,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00043655,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "which skills should I learn next?",
+    "rep": 0,
+    "ms": 918.3545999985654,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00040389999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "is this resume good enough for FAANG?",
+    "rep": 0,
+    "ms": 910.121099994285,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00044714999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "fit my resume to the posting",
+    "rep": 0,
+    "ms": 1019.96569999028,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.0500000000000001e-06,
+    "incomplete_usd": 0.0002607
+   },
+   {
+    "case": "hello",
+    "rep": 0,
+    "ms": 0.04499999340623617,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate it to Japanese for jobs in Japan",
+    "rep": 0,
+    "ms": 412.79069997835904,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "ja-JP"
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "please make my education section cleaner",
+    "rep": 0,
+    "ms": 913.6450000223704,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005489,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Get my resume ready for a role at Netflix",
+    "rep": 0,
+    "ms": 397.5155999942217,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Netflix",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Adapt my resume to Atlassian's culture",
+    "rep": 0,
+    "ms": 1309.9761999910697,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Atlassian",
+     ""
+    ],
+    "billed_usd": 0.0006149500000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Localize my CV for the job market in Spain",
+    "rep": 0,
+    "ms": 1108.4224999940488,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "es-ES"
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Need this resume in Italian",
+    "rep": 0,
+    "ms": 416.84689998510294,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "it-IT"
+    ],
+    "billed_usd": 9e-07,
+    "incomplete_usd": 0.0002487
+   },
+   {
+    "case": "Can you rewrite my summary to sound more senior?",
+    "rep": 0,
+    "ms": 1100.380599993514,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.8e-06,
+    "incomplete_usd": 0.0002502
+   },
+   {
+    "case": "Add metrics to my work experience bullets",
+    "rep": 0,
+    "ms": 405.0832999928389,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Tailor my experience to the job description I shared",
+    "rep": 0,
+    "ms": 406.81250000488944,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.95e-06,
+    "incomplete_usd": 0.0002625
+   },
+   {
+    "case": "How well do I match the posting?",
+    "rep": 0,
+    "ms": 1040.6309999816585,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003953,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "What would Google recruiters think of my resume?",
+    "rep": 0,
+    "ms": 906.2695000029635,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "Google",
+     ""
+    ],
+    "billed_usd": 0.00041009999999999994,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Is two pages too long for a resume?",
+    "rep": 0,
+    "ms": 396.8452999833971,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 1.2e-06,
+    "incomplete_usd": 0.0002493
+   },
+   {
+    "case": "redo",
+    "rep": 0,
+    "ms": 0.03950000973418355,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "redo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "revert that",
+    "rep": 0,
+    "ms": 0.055500015150755644,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "undo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "cheers, that's great",
+    "rep": 0,
+    "ms": 393.8868999830447,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 7.5e-07,
+    "incomplete_usd": 0.0002481
+   },
+   {
+    "case": "Optimize my resume for Spotify and then put it into Dutch",
+    "rep": 0,
+    "ms": 1278.7966000032611,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research",
+      "translation"
+     ],
+     "Spotify",
+     "nl-NL"
+    ],
+    "billed_usd": 0.0005114,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate my resume to Spanish for Mexico, then polish the skills sect",
+    "rep": 0,
+    "ms": 1190.3014999988955,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement",
+      "translation"
+     ],
+     "",
+     "es-MX"
+    ],
+    "billed_usd": 0.000657,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Make my resume stronger for a product manager role",
+    "rep": 0,
+    "ms": 1036.312199983513,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005426,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Update my summary for this job description",
+    "rep": 0,
+    "ms": 1132.0750000013504,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004767,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize it for the company",
+    "rep": 0,
+    "ms": 1180.379700002959,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000478,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "could you put my CV into French?",
+    "rep": 1,
+    "ms": 1065.41089998791,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "fr-FR"
+    ],
+    "billed_usd": 0.0004567,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I want a German version of my resume",
+    "rep": 1,
+    "ms": 429.97029999969527,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "de-DE"
+    ],
+    "billed_usd": 1.3499999999999998e-06,
+    "incomplete_usd": 0.0002493
+   },
+   {
+    "case": "tune my resume towards Amazon",
+    "rep": 1,
+    "ms": 1332.0642999897245,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Amazon",
+     ""
+    ],
+    "billed_usd": 0.00057815,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I'm applying at Microsoft, adjust my resume",
+    "rep": 1,
+    "ms": 399.0451999998186,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Microsoft",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002499
+   },
+   {
+    "case": "strengthen the bullets in my experience",
+    "rep": 1,
+    "ms": 412.775300006615,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.3499999999999998e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "my summary is too long, trim it",
+    "rep": 1,
+    "ms": 1167.5891999911983,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00054905,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "which skills should I learn next?",
+    "rep": 1,
+    "ms": 1042.1808999963105,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003764,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "is this resume good enough for FAANG?",
+    "rep": 1,
+    "ms": 893.945599993458,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00041464999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "fit my resume to the posting",
+    "rep": 1,
+    "ms": 405.91619999031536,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.0500000000000001e-06,
+    "incomplete_usd": 0.0002607
+   },
+   {
+    "case": "hello",
+    "rep": 1,
+    "ms": 0.03920000744983554,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate it to Japanese for jobs in Japan",
+    "rep": 1,
+    "ms": 400.09850001661107,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "ja-JP"
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "please make my education section cleaner",
+    "rep": 1,
+    "ms": 1206.6497999767307,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005214,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Get my resume ready for a role at Netflix",
+    "rep": 1,
+    "ms": 399.50120000867173,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Netflix",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Adapt my resume to Atlassian's culture",
+    "rep": 1,
+    "ms": 1169.371099997079,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Atlassian",
+     ""
+    ],
+    "billed_usd": 0.00054245,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Localize my CV for the job market in Spain",
+    "rep": 1,
+    "ms": 385.63649999559857,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "es-ES"
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Need this resume in Italian",
+    "rep": 1,
+    "ms": 403.9100000227336,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "it-IT"
+    ],
+    "billed_usd": 9e-07,
+    "incomplete_usd": 0.0002487
+   },
+   {
+    "case": "Can you rewrite my summary to sound more senior?",
+    "rep": 1,
+    "ms": 402.7559999958612,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.8e-06,
+    "incomplete_usd": 0.0002502
+   },
+   {
+    "case": "Add metrics to my work experience bullets",
+    "rep": 1,
+    "ms": 412.5323999905959,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Tailor my experience to the job description I shared",
+    "rep": 1,
+    "ms": 386.7706999881193,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.95e-06,
+    "incomplete_usd": 0.0002625
+   },
+   {
+    "case": "How well do I match the posting?",
+    "rep": 1,
+    "ms": 1183.4854999906383,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003953,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "What would Google recruiters think of my resume?",
+    "rep": 1,
+    "ms": 813.7635000166483,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "Google",
+     ""
+    ],
+    "billed_usd": 0.00036509999999999993,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Is two pages too long for a resume?",
+    "rep": 1,
+    "ms": 395.5141000042204,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 1.2e-06,
+    "incomplete_usd": 0.0002493
+   },
+   {
+    "case": "redo",
+    "rep": 1,
+    "ms": 0.039000005926936865,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "redo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "revert that",
+    "rep": 1,
+    "ms": 0.037999998312443495,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "undo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "cheers, that's great",
+    "rep": 1,
+    "ms": 411.07600001851097,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 7.5e-07,
+    "incomplete_usd": 0.0002481
+   },
+   {
+    "case": "Optimize my resume for Spotify and then put it into Dutch",
+    "rep": 1,
+    "ms": 1049.3362999986857,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research",
+      "translation"
+     ],
+     "Spotify",
+     "nl-NL"
+    ],
+    "billed_usd": 0.0005364,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate my resume to Spanish for Mexico, then polish the skills sect",
+    "rep": 1,
+    "ms": 1192.1556000015698,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement",
+      "translation"
+     ],
+     "",
+     "es-MX"
+    ],
+    "billed_usd": 0.000552,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Make my resume stronger for a product manager role",
+    "rep": 1,
+    "ms": 1030.840099992929,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0006326,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Update my summary for this job description",
+    "rep": 1,
+    "ms": 1047.105100005865,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005092,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize it for the company",
+    "rep": 1,
+    "ms": 853.5489999921992,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00042300000000000004,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "could you put my CV into French?",
+    "rep": 2,
+    "ms": 400.35760001046583,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "fr-FR"
+    ],
+    "billed_usd": 1.2e-06,
+    "incomplete_usd": 0.000249
+   },
+   {
+    "case": "I want a German version of my resume",
+    "rep": 2,
+    "ms": 399.8616999888327,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "de-DE"
+    ],
+    "billed_usd": 1.3499999999999998e-06,
+    "incomplete_usd": 0.0002493
+   },
+   {
+    "case": "tune my resume towards Amazon",
+    "rep": 2,
+    "ms": 927.5639000115916,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Amazon",
+     ""
+    ],
+    "billed_usd": 0.00049815,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I'm applying at Microsoft, adjust my resume",
+    "rep": 2,
+    "ms": 397.7213999896776,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Microsoft",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002499
+   },
+   {
+    "case": "strengthen the bullets in my experience",
+    "rep": 2,
+    "ms": 400.4633000004105,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.3499999999999998e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "my summary is too long, trim it",
+    "rep": 2,
+    "ms": 921.0639999946579,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00044405,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "which skills should I learn next?",
+    "rep": 2,
+    "ms": 909.017900004983,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00039139999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "is this resume good enough for FAANG?",
+    "rep": 2,
+    "ms": 787.8766999929212,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00044964999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "fit my resume to the posting",
+    "rep": 2,
+    "ms": 392.4866000015754,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.0500000000000001e-06,
+    "incomplete_usd": 0.0002607
+   },
+   {
+    "case": "hello",
+    "rep": 2,
+    "ms": 0.03560000914148986,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate it to Japanese for jobs in Japan",
+    "rep": 2,
+    "ms": 396.55810000840575,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "ja-JP"
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "please make my education section cleaner",
+    "rep": 2,
+    "ms": 1085.0524999841582,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005164,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Get my resume ready for a role at Netflix",
+    "rep": 2,
+    "ms": 404.4016000116244,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Netflix",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Adapt my resume to Atlassian's culture",
+    "rep": 2,
+    "ms": 1430.7743000099435,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Atlassian",
+     ""
+    ],
+    "billed_usd": 0.00050995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Localize my CV for the job market in Spain",
+    "rep": 2,
+    "ms": 382.1423999906983,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "es-ES"
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Need this resume in Italian",
+    "rep": 2,
+    "ms": 995.8991000021342,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "it-IT"
+    ],
+    "billed_usd": 0.000583,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Can you rewrite my summary to sound more senior?",
+    "rep": 2,
+    "ms": 394.7828000236768,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.8e-06,
+    "incomplete_usd": 0.0002502
+   },
+   {
+    "case": "Add metrics to my work experience bullets",
+    "rep": 2,
+    "ms": 396.6038000071421,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.5e-06,
+    "incomplete_usd": 0.0002496
+   },
+   {
+    "case": "Tailor my experience to the job description I shared",
+    "rep": 2,
+    "ms": 381.0081999981776,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 1.95e-06,
+    "incomplete_usd": 0.0002625
+   },
+   {
+    "case": "How well do I match the posting?",
+    "rep": 2,
+    "ms": 913.7751000234857,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00040029999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "What would Google recruiters think of my resume?",
+    "rep": 2,
+    "ms": 858.6935000203084,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "Google",
+     ""
+    ],
+    "billed_usd": 0.00041509999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Is two pages too long for a resume?",
+    "rep": 2,
+    "ms": 393.82080000359565,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 1.2e-06,
+    "incomplete_usd": 0.0002493
+   },
+   {
+    "case": "redo",
+    "rep": 2,
+    "ms": 0.03969998215325177,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "redo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "revert that",
+    "rep": 2,
+    "ms": 0.034900003811344504,
+    "decided_by": "rules",
+    "correct": true,
+    "got": [
+     "undo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "cheers, that's great",
+    "rep": 2,
+    "ms": 405.93159999116324,
+    "decided_by": "classifier",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 7.5e-07,
+    "incomplete_usd": 0.0002481
+   },
+   {
+    "case": "Optimize my resume for Spotify and then put it into Dutch",
+    "rep": 2,
+    "ms": 1045.7191000168677,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research",
+      "translation"
+     ],
+     "Spotify",
+     "nl-NL"
+    ],
+    "billed_usd": 0.0005239,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate my resume to Spanish for Mexico, then polish the skills sect",
+    "rep": 2,
+    "ms": 1251.288300001761,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement",
+      "translation"
+     ],
+     "",
+     "es-MX"
+    ],
+    "billed_usd": 0.000557,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Make my resume stronger for a product manager role",
+    "rep": 2,
+    "ms": 1309.1485000040848,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0006351,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Update my summary for this job description",
+    "rep": 2,
+    "ms": 1040.0261000031605,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004792,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize it for the company",
+    "rep": 2,
+    "ms": 1196.6517999826465,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00038800000000000005,
+    "incomplete_usd": 0.0
+   }
+  ],
+  "llm_only": [
+   {
+    "case": "could you put my CV into French?",
+    "rep": 0,
+    "ms": 1272.0885000017006,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "fr-FR"
+    ],
+    "billed_usd": 0.000558,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I want a German version of my resume",
+    "rep": 0,
+    "ms": 1313.4999999892898,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "de-DE"
+    ],
+    "billed_usd": 0.000578,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "tune my resume towards Amazon",
+    "rep": 0,
+    "ms": 1562.0345999777783,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Amazon",
+     ""
+    ],
+    "billed_usd": 0.0005746,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I'm applying at Microsoft, adjust my resume",
+    "rep": 0,
+    "ms": 1044.2573000036646,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Microsoft",
+     ""
+    ],
+    "billed_usd": 0.0005611,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "strengthen the bullets in my experience",
+    "rep": 0,
+    "ms": 1034.1125999984797,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004727,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "my summary is too long, trim it",
+    "rep": 0,
+    "ms": 1051.2593000021297,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000453,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "which skills should I learn next?",
+    "rep": 0,
+    "ms": 1182.5428000011016,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004277,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "is this resume good enough for FAANG?",
+    "rep": 0,
+    "ms": 908.5568000155035,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "FAANG",
+     ""
+    ],
+    "billed_usd": 0.00045329999999999996,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "fit my resume to the posting",
+    "rep": 0,
+    "ms": 1575.4500000039116,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005485,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "hello",
+    "rep": 0,
+    "ms": 929.2457000119612,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003134,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate it to Japanese for jobs in Japan",
+    "rep": 0,
+    "ms": 889.2507000127807,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "ja-JP"
+    ],
+    "billed_usd": 0.0004805,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "please make my education section cleaner",
+    "rep": 0,
+    "ms": 1065.5736000044271,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005199,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Get my resume ready for a role at Netflix",
+    "rep": 0,
+    "ms": 1171.2128999934066,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Netflix",
+     ""
+    ],
+    "billed_usd": 0.00047829999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Adapt my resume to Atlassian's culture",
+    "rep": 0,
+    "ms": 1169.8008000093978,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Atlassian",
+     ""
+    ],
+    "billed_usd": 0.0005361000000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Localize my CV for the job market in Spain",
+    "rep": 0,
+    "ms": 1106.6944999911357,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "es-ES"
+    ],
+    "billed_usd": 0.0004936000000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Need this resume in Italian",
+    "rep": 0,
+    "ms": 1422.6879999914672,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "it-IT"
+    ],
+    "billed_usd": 0.0005871,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Can you rewrite my summary to sound more senior?",
+    "rep": 0,
+    "ms": 1368.9184999966528,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005611,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Add metrics to my work experience bullets",
+    "rep": 0,
+    "ms": 1171.2211999983992,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005527,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Tailor my experience to the job description I shared",
+    "rep": 0,
+    "ms": 1042.2140999871772,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005522000000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "How well do I match the posting?",
+    "rep": 0,
+    "ms": 931.824700004654,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004241,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "What would Google recruiters think of my resume?",
+    "rep": 0,
+    "ms": 917.7288000064436,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "Google",
+     ""
+    ],
+    "billed_usd": 0.00040829999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Is two pages too long for a resume?",
+    "rep": 0,
+    "ms": 1038.7884999800008,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00036829999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "redo",
+    "rep": 0,
+    "ms": 1032.0866999973077,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "redo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003784,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "revert that",
+    "rep": 0,
+    "ms": 908.4501000179444,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "undo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000379,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "cheers, that's great",
+    "rep": 0,
+    "ms": 1043.040899996413,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00033769999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize my resume for Spotify and then put it into Dutch",
+    "rep": 0,
+    "ms": 1067.9907000157982,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research",
+      "translation"
+     ],
+     "Spotify",
+     "nl-NL"
+    ],
+    "billed_usd": 0.0006864,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate my resume to Spanish for Mexico, then polish the skills sect",
+    "rep": 0,
+    "ms": 912.3364000115544,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement",
+      "translation"
+     ],
+     "",
+     "es-MX"
+    ],
+    "billed_usd": 0.000557,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Make my resume stronger for a product manager role",
+    "rep": 0,
+    "ms": 1045.1838000153657,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0006133,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Update my summary for this job description",
+    "rep": 0,
+    "ms": 965.0933000084478,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004852,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize it for the company",
+    "rep": 0,
+    "ms": 902.3040999891236,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004571,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "could you put my CV into French?",
+    "rep": 1,
+    "ms": 913.5676999867428,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "fr-FR"
+    ],
+    "billed_usd": 0.0005555,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I want a German version of my resume",
+    "rep": 1,
+    "ms": 1166.6936000110582,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "de-DE"
+    ],
+    "billed_usd": 0.0005455,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "tune my resume towards Amazon",
+    "rep": 1,
+    "ms": 1402.218500006711,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Amazon",
+     ""
+    ],
+    "billed_usd": 0.0005796,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I'm applying at Microsoft, adjust my resume",
+    "rep": 1,
+    "ms": 1039.3874000001233,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Microsoft",
+     ""
+    ],
+    "billed_usd": 0.0005236,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "strengthen the bullets in my experience",
+    "rep": 1,
+    "ms": 1300.3821000165772,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004752,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "my summary is too long, trim it",
+    "rep": 1,
+    "ms": 893.378999986453,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000438,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "which skills should I learn next?",
+    "rep": 1,
+    "ms": 933.1828000140376,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004102,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "is this resume good enough for FAANG?",
+    "rep": 1,
+    "ms": 1181.2746000068728,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "FAANG",
+     ""
+    ],
+    "billed_usd": 0.00045579999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "fit my resume to the posting",
+    "rep": 1,
+    "ms": 958.239900006447,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000496,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "hello",
+    "rep": 1,
+    "ms": 1036.5753000078257,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003134,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate it to Japanese for jobs in Japan",
+    "rep": 1,
+    "ms": 1176.7026000015903,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "ja-JP"
+    ],
+    "billed_usd": 0.000553,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "please make my education section cleaner",
+    "rep": 1,
+    "ms": 906.7639000131749,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005274,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Get my resume ready for a role at Netflix",
+    "rep": 1,
+    "ms": 1054.7369999985676,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Netflix",
+     ""
+    ],
+    "billed_usd": 0.0005983,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Adapt my resume to Atlassian's culture",
+    "rep": 1,
+    "ms": 1576.7635999945924,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Atlassian",
+     ""
+    ],
+    "billed_usd": 0.0006286,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Localize my CV for the job market in Spain",
+    "rep": 1,
+    "ms": 927.2193000069819,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "es-ES"
+    ],
+    "billed_usd": 0.0004461,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Need this resume in Italian",
+    "rep": 1,
+    "ms": 1435.7414999976754,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "it-IT"
+    ],
+    "billed_usd": 0.0005746,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Can you rewrite my summary to sound more senior?",
+    "rep": 1,
+    "ms": 1059.6047999861185,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005586,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Add metrics to my work experience bullets",
+    "rep": 1,
+    "ms": 1015.0701000238769,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005327,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Tailor my experience to the job description I shared",
+    "rep": 1,
+    "ms": 1290.216800000053,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005722,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "How well do I match the posting?",
+    "rep": 1,
+    "ms": 934.4698999775574,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004291,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "What would Google recruiters think of my resume?",
+    "rep": 1,
+    "ms": 1165.7029000052717,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "Google",
+     ""
+    ],
+    "billed_usd": 0.00040829999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Is two pages too long for a resume?",
+    "rep": 1,
+    "ms": 938.0770999996457,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00030329999999999995,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "redo",
+    "rep": 1,
+    "ms": 1042.8671999834478,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "redo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003784,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "revert that",
+    "rep": 1,
+    "ms": 1159.2858999792952,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "undo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000394,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "cheers, that's great",
+    "rep": 1,
+    "ms": 1173.0998999846634,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003627,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize my resume for Spotify and then put it into Dutch",
+    "rep": 1,
+    "ms": 1160.340600006748,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research",
+      "translation"
+     ],
+     "Spotify",
+     "nl-NL"
+    ],
+    "billed_usd": 0.0005463999999999999,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate my resume to Spanish for Mexico, then polish the skills sect",
+    "rep": 1,
+    "ms": 1292.1268999925815,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement",
+      "translation"
+     ],
+     "",
+     "es-MX"
+    ],
+    "billed_usd": 0.0006945,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Make my resume stronger for a product manager role",
+    "rep": 1,
+    "ms": 923.5823999915738,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005233,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Update my summary for this job description",
+    "rep": 1,
+    "ms": 913.5383999964688,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003727,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize it for the company",
+    "rep": 1,
+    "ms": 999.5686000038404,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004571,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "could you put my CV into French?",
+    "rep": 2,
+    "ms": 928.9098999870475,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "fr-FR"
+    ],
+    "billed_usd": 0.000473,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I want a German version of my resume",
+    "rep": 2,
+    "ms": 1033.3714000007603,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "de-DE"
+    ],
+    "billed_usd": 0.0005555,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "tune my resume towards Amazon",
+    "rep": 2,
+    "ms": 1175.6517000030726,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Amazon",
+     ""
+    ],
+    "billed_usd": 0.0005396,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "I'm applying at Microsoft, adjust my resume",
+    "rep": 2,
+    "ms": 1181.7192999878898,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Microsoft",
+     ""
+    ],
+    "billed_usd": 0.0004986,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "strengthen the bullets in my experience",
+    "rep": 2,
+    "ms": 912.0382000110112,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004752,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "my summary is too long, trim it",
+    "rep": 2,
+    "ms": 1167.777800001204,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000468,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "which skills should I learn next?",
+    "rep": 2,
+    "ms": 918.6958000063896,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003752,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "is this resume good enough for FAANG?",
+    "rep": 2,
+    "ms": 1185.5320999748074,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "FAANG",
+     ""
+    ],
+    "billed_usd": 0.00045579999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "fit my resume to the posting",
+    "rep": 2,
+    "ms": 1044.9888000148349,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004885,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "hello",
+    "rep": 2,
+    "ms": 1056.0164999915287,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00030839999999999996,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate it to Japanese for jobs in Japan",
+    "rep": 2,
+    "ms": 1447.4967999849468,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "ja-JP"
+    ],
+    "billed_usd": 0.000563,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "please make my education section cleaner",
+    "rep": 2,
+    "ms": 754.1229999915231,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005199,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Get my resume ready for a role at Netflix",
+    "rep": 2,
+    "ms": 907.9802999913227,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Netflix",
+     ""
+    ],
+    "billed_usd": 0.00046579999999999994,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Adapt my resume to Atlassian's culture",
+    "rep": 2,
+    "ms": 804.41179999616,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research"
+     ],
+     "Atlassian",
+     ""
+    ],
+    "billed_usd": 0.0004986,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Localize my CV for the job market in Spain",
+    "rep": 2,
+    "ms": 1051.107699982822,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "es-ES"
+    ],
+    "billed_usd": 0.00045610000000000003,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Need this resume in Italian",
+    "rep": 2,
+    "ms": 970.7357999868691,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "translation"
+     ],
+     "",
+     "it-IT"
+    ],
+    "billed_usd": 0.0005746,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Can you rewrite my summary to sound more senior?",
+    "rep": 2,
+    "ms": 1300.4706999927294,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005736000000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Add metrics to my work experience bullets",
+    "rep": 2,
+    "ms": 1296.486899984302,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005377,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Tailor my experience to the job description I shared",
+    "rep": 2,
+    "ms": 1064.5627000194509,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "jd_matching"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0005522000000000001,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "How well do I match the posting?",
+    "rep": 2,
+    "ms": 705.9013999823947,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00039660000000000004,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "What would Google recruiters think of my resume?",
+    "rep": 2,
+    "ms": 914.842400001362,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "Google",
+     ""
+    ],
+    "billed_usd": 0.00041079999999999996,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Is two pages too long for a resume?",
+    "rep": 2,
+    "ms": 1163.827600015793,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "question",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00037079999999999996,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "redo",
+    "rep": 2,
+    "ms": 920.8264999906532,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "redo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0003784,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "revert that",
+    "rep": 2,
+    "ms": 782.2528000106104,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "undo",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.000399,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "cheers, that's great",
+    "rep": 2,
+    "ms": 906.5589999954682,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "chitchat",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00040019999999999997,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize my resume for Spotify and then put it into Dutch",
+    "rep": 2,
+    "ms": 1234.767300018575,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "company_research",
+      "translation"
+     ],
+     "Spotify",
+     "nl-NL"
+    ],
+    "billed_usd": 0.0005664,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Translate my resume to Spanish for Mexico, then polish the skills sect",
+    "rep": 2,
+    "ms": 1051.0611000063363,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement",
+      "translation"
+     ],
+     "",
+     "es-MX"
+    ],
+    "billed_usd": 0.000557,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Make my resume stronger for a product manager role",
+    "rep": 2,
+    "ms": 1069.7022000094876,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "edit",
+     [
+      "section_enhancement"
+     ],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0006232999999999999,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Update my summary for this job description",
+    "rep": 2,
+    "ms": 913.4763000183739,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.0004352,
+    "incomplete_usd": 0.0
+   },
+   {
+    "case": "Optimize it for the company",
+    "rep": 2,
+    "ms": 786.7000999976881,
+    "decided_by": "llm",
+    "correct": true,
+    "got": [
+     "clarify",
+     [],
+     "",
+     ""
+    ],
+    "billed_usd": 0.00038710000000000003,
+    "incomplete_usd": 0.0
+   }
+  ]
+ },
+ "summary": {
+  "cascade": {
+   "requests": 90,
+   "accuracy": 1.0,
+   "always_correct_cases": 30,
+   "unstable_cases": 0,
+   "median_ms": 423.44064998906106,
+   "p95_ms": 1309.1485000040848,
+   "billed_usd_per_request": 0.0002243261111111111,
+   "incomplete_usd_upper_bound_per_request": 0.00011166,
+   "tiers": {
+    "classifier": 42,
+    "llm": 39,
+    "rules": 9
+   },
+   "classifier_precision": 1.0,
+   "misses": []
+  },
+  "llm_only": {
+   "requests": 90,
+   "accuracy": 1.0,
+   "always_correct_cases": 30,
+   "unstable_cases": 0,
+   "median_ms": 1044.6230500092497,
+   "p95_ms": 1435.7414999976754,
+   "billed_usd_per_request": 0.00048616444444444444,
+   "incomplete_usd_upper_bound_per_request": 0.0,
+   "tiers": {
+    "llm": 90
+   },
+   "classifier_precision": null,
+   "misses": []
+  }
+ }
+}

@@ -25,6 +25,8 @@ from app.agents.base import Agent, AgentContext, AgentResult
 from app.llm.client import LLM, LLMError, current_node
 from app.models.conversation import ConversationContext
 from app.models.resume import Resume
+from app.orchestration.classifier import IntentClassifier
+from app.orchestration.route_cache import RouteCache
 from app.orchestration.router import RoutingDecision, route
 from app.retrieval.vector_store import VectorStore
 
@@ -42,6 +44,8 @@ class TurnState(TypedDict, total=False):
     step_index: int
     results: list[AgentResult]
     reply: str
+    preset: str | None  # suggestion chip id: skips intent classification
+    index_ready: Any  # async callable: wait for background re-indexing (optional)
 
 
 SYNTH_SYSTEM = """You are a friendly, expert resume coach replying in a chat.
@@ -51,8 +55,9 @@ Summarize what the specialist agents just did, based ONLY on the report below:
 - surface important numbers (match score before/after, skill gaps) and every warning the
   user must act on (placeholders to fill, figures to verify)
 - end with one or two specific follow-up suggestions
-Only mention things present in the report; never comment on scores, gaps or warnings that are
-absent. Be concise (under ~180 words). Use Markdown. Reply in the language the user wrote in."""
+Only mention things present in the report. If the report has no scores, gaps or warnings,
+simply leave them out - never add a note saying they are missing or absent.
+Be concise (under ~180 words). Use Markdown. Reply in the language the user wrote in."""
 
 ANSWER_SYSTEM = """You are a friendly, expert resume coach answering a question in a chat.
 Use the resume excerpts, the full outline and the guidance provided. Be specific, honest and
@@ -73,18 +78,36 @@ def result_summary(result: AgentResult) -> dict[str, Any]:
     return result.model_dump(exclude={"resume"})
 
 
-def build_graph(llm: LLM, agents: dict[str, Agent], vectors: VectorStore):
+def build_graph(
+    llm: LLM,
+    agents: dict[str, Agent],
+    vectors: VectorStore,
+    *,
+    cache: RouteCache | None = None,
+    classifier: IntentClassifier | None = None,
+):
     async def route_node(state: TurnState) -> dict:
         current_node.set("router")
         _emit({"type": "status", "stage": "routing", "message": "Understanding your request"})
-        decision, memory = await route(
-            llm, state["user_message"], state["memory"], state["resume"], state["history"]
+        routed = await route(
+            llm,
+            state["user_message"],
+            state["memory"],
+            state["resume"],
+            state["history"],
+            preset=state.get("preset"),
+            cache=cache,
+            classifier=classifier,
         )
+        decision, memory = routed.decision, routed.memory
         _emit(
             {
                 "type": "plan",
                 "intent": decision.intent,
                 "reasoning": decision.reasoning,
+                "decided_by": routed.decided_by,
+                "confidence": routed.confidence,
+                "route_ms": routed.ms,
                 "steps": [
                     {
                         "agent": s.agent,
@@ -119,6 +142,8 @@ def build_graph(llm: LLM, agents: dict[str, Agent], vectors: VectorStore):
         step = decision.steps[index]
         agent = agents[step.agent]
         current_node.set(f"agent:{agent.name}")
+        if agent.uses_resume_index and state.get("index_ready"):
+            await state["index_ready"]()  # never race the previous turn's background re-index
         _emit(
             {
                 "type": "agent_start",
@@ -170,9 +195,12 @@ def build_graph(llm: LLM, agents: dict[str, Agent], vectors: VectorStore):
     async def stream_reply(system: str, user: str, name: str) -> str:
         _emit({"type": "status", "stage": "responding", "message": "Writing a reply"})
         parts: list[str] = []
-        async for token in llm.stream(system, user, role="router", name=name):
-            parts.append(token)
-            _emit({"type": "token", "text": token})
+        # aclosing: if the client disconnects mid-reply, the stream is closed (and its partial
+        # call metered) right here, in this turn's context.
+        async with contextlib.aclosing(llm.stream(system, user, role="reply", name=name)) as tokens:
+            async for token in tokens:
+                parts.append(token)
+                _emit({"type": "token", "text": token})
         return "".join(parts).strip()
 
     async def synthesize_node(state: TurnState) -> dict:
@@ -203,6 +231,8 @@ def build_graph(llm: LLM, agents: dict[str, Agent], vectors: VectorStore):
     async def answer_node(state: TurnState) -> dict:
         current_node.set("respond")
         resume, question = state["resume"], state["user_message"]
+        if state.get("index_ready"):
+            await state["index_ready"]()
         hits, guidance = await asyncio.gather(
             asyncio.to_thread(vectors.search_resume, state["conversation_id"], question, 5),
             asyncio.to_thread(vectors.search_knowledge, question, 2),
