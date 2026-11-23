@@ -19,9 +19,7 @@ Section Enhancement.
 | Doc | What it covers |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent architecture, turn lifecycle, context-engineering choices, tool/API choices, measured latency |
-| [docs/RESPONSIBLE_AI.md](docs/RESPONSIBLE_AI.md) | Responsible Use of AI statement, and how prompt traces are provided |
-| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | A 5-minute walkthrough script for the demo video |
-| [docs/PROMPT_LOG.md](docs/PROMPT_LOG.md) | Every instruction I gave the AI agent (verbatim, as a structured brief, and what was delivered), plus *Where my calls were verified*: my diagnoses and requirements next to the measurements that confirmed them |
+| Submission folder (shared separately) | Responsible Use of AI statement, the AI chat trace, a prompt log of every instruction I gave with the measurements that confirmed my calls, and the demo videos |
 
 ---
 
