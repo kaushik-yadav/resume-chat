@@ -1,0 +1,52 @@
+[project]
+name = "resume-chat-backend"
+version = "0.1.0"
+description = "Conversational resume optimization API: multi-agent orchestration with LangGraph, Gemini, Chroma and Firestore."
+readme = "../README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "python-multipart>=0.0.9",
+  "sse-starlette>=2.1",
+  "python-dotenv>=1.0",
+  # Agent orchestration
+  "langchain>=1.0",
+  "langchain-core>=1.0",
+  "langgraph>=1.0",
+  "langchain-google-genai>=4.0",
+  "langchain-openai>=1.0",
+  "langchain-tavily>=0.2",
+  "ddgs>=9.0",
+  # Retrieval
+  "chromadb>=1.0",
+  # Persistence
+  "firebase-admin>=7.0",
+  # Resume parsing / export
+  "pypdf>=5.0",
+  "python-docx>=1.1",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.24",
+  "httpx>=0.27",
+  "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501", "B008"]
