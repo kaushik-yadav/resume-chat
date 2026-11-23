@@ -45,6 +45,7 @@ class TurnState(TypedDict, total=False):
     results: list[AgentResult]
     reply: str
     preset: str | None  # suggestion chip id: skips intent classification
+    selection: list[str]  # text selected in the resume: edits change only those lines
     index_ready: Any  # async callable: wait for background re-indexing (optional)
 
 
@@ -98,6 +99,7 @@ def build_graph(
             preset=state.get("preset"),
             cache=cache,
             classifier=classifier,
+            selection=state.get("selection") or None,
         )
         decision, memory = routed.decision, routed.memory
         _emit(
@@ -114,6 +116,7 @@ def build_graph(
                         "title": agents[s.agent].title,
                         "instruction": s.instruction,
                         "target_sections": s.target_sections,
+                        "target_lines": s.target_lines,
                     }
                     for s in decision.steps
                 ],
@@ -165,6 +168,7 @@ def build_graph(
             user_message=state["user_message"],
             memory=state["memory"],
             target_sections=step.target_sections,
+            target_lines=step.target_lines,
             emit=on_progress,
         )
         try:
@@ -236,10 +240,24 @@ def build_graph(
         hits, guidance = await asyncio.gather(
             asyncio.to_thread(vectors.search_resume, state["conversation_id"], question, 5),
             asyncio.to_thread(vectors.search_knowledge, question, 2),
+            return_exceptions=True,
         )
+        # Retrieval only enriches the answer: if the vector store fails, answer from the outline.
+        if isinstance(hits, Exception):
+            logger.warning("Resume search failed; answering without excerpts: %s", hits)
+            hits = []
+        if isinstance(guidance, Exception):
+            logger.warning("Knowledge search failed; answering without guidance: %s", guidance)
+            guidance = []
         user = "\n\n".join(
             [
                 f"Question: {question[:1500]}",
+                (
+                    "The question is about these selected lines:\n"
+                    + "\n".join(f"- {s}" for s in state.get("selection") or [])
+                )
+                if state.get("selection")
+                else "",
                 f"Known goals: company={state['memory'].target_company}, role={state['memory'].target_role}",
                 f"<history>\n{state['history'][-2000:]}\n</history>",
                 f"Resume outline:\n{resume.outline()}",

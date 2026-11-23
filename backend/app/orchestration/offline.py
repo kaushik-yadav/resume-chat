@@ -71,6 +71,14 @@ def routing(system: str, user: str) -> dict:
                 "target_sections": [],
             }
         )
+    has_selection = "<selected_lines>" in user
+    edit_verb = re.match(
+        r"^\s*(make|rewrite|improve|optimi|shorten|tighten|fix|polish|reword)", low
+    )
+    if has_selection and edit_verb and not steps:
+        steps.append(
+            {"agent": "section_enhancement", "instruction": msg[:200], "target_sections": []}
+        )
     if steps:
         return {
             **base,

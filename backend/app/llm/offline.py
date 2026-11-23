@@ -58,6 +58,21 @@ def _polish(content: str) -> str:
     return "\n".join(out)
 
 
+def line_edit_plan(system: str, user: str) -> dict:
+    """Rewrite each selected line deterministically (weak opener fixed, marked as refined)."""
+    rewrites = []
+    for match in re.finditer(r"^(L\d+): (.+)$", _block(user, "lines"), re.MULTILINE):
+        line = match.group(2)
+        bullet = f"- {line}" if not line.startswith("- ") else line
+        polished = _polish(bullet)
+        if polished == bullet:
+            polished = bullet + " (refined)"
+        rewrites.append(
+            {"line_id": match.group(1), "replacement": polished, "rationale": "Tightened wording."}
+        )
+    return {"reasoning": "Offline mode: refined only the selected lines.", "rewrites": rewrites}
+
+
 def edit_plan(system: str, user: str) -> dict:
     edits = []
     for s in sections_in(_block(user, "edit")):
@@ -163,6 +178,7 @@ def offline_llm() -> FakeLLM:
     llm = FakeLLM(
         {
             "EditPlan": edit_plan,
+            "LineEditPlan": line_edit_plan,
             "JobRequirements": job_requirements,
             "MatchAssessment": match_assessment,
             "CompanyProfile": company_profile,
