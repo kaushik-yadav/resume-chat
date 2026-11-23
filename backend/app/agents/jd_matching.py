@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import re
+from collections import OrderedDict
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -16,6 +19,7 @@ from app.agents.base import (
     default_targets,
     render_sections,
 )
+from app.llm.client import current_plan
 
 # ------------------------------------------------------------------------- schemas
 
@@ -101,11 +105,32 @@ def match_score(req_score: float, kw_found: int, kw_total: int) -> int:
 class JDMatchingAgent(Agent):
     name = "jd_matching"
     title = "Job Description Matching Agent"
+    uses_resume_index = True
     description = (
         "Analyzes a job description the user provided: extracts requirements, scores the "
         "resume's match (0-100), identifies skill gaps, and restructures sections to highlight "
         "relevant experience. Requires job description text."
     )
+
+    # Requirements extracted per (plan, job description): a repeat request for the same JD
+    # (after an undo, or tailoring another section) skips the extraction call.
+    _requirements_cache: OrderedDict[str, JobRequirements] = OrderedDict()
+
+    async def _requirements(self, jd: str) -> JobRequirements:
+        key = hashlib.sha256(f"{current_plan.get()}\x1f{jd}".encode()).hexdigest()
+        cached = self._requirements_cache.get(key)
+        if cached is not None:
+            return cached.model_copy(deep=True)
+        job = await self.deps.llm.structured(
+            JobRequirements,
+            EXTRACT_SYSTEM,
+            f"<job_description>\n{jd}\n</job_description>",
+            name="extract_requirements",
+        )
+        self._requirements_cache[key] = job
+        while len(self._requirements_cache) > 128:
+            self._requirements_cache.popitem(last=False)
+        return job.model_copy(deep=True)
 
     async def run(self, ctx: AgentContext) -> AgentResult:
         jd = (ctx.memory.job_description or "").strip()
@@ -121,22 +146,24 @@ class JDMatchingAgent(Agent):
         llm = self.deps.llm
 
         await ctx.progress("Extracting requirements and keywords from the job description")
-        job = await llm.structured(
-            JobRequirements,
-            EXTRACT_SYSTEM,
-            f"<job_description>\n{jd}\n</job_description>",
-            name="extract_requirements",
+        # Requirement extraction and resume indexing are independent: run them concurrently.
+        job, _ = await asyncio.gather(
+            self._requirements(jd),
+            self.in_thread(self.deps.vectors.index_resume, ctx.conversation_id, "working", resume),
         )
 
         await ctx.progress(
             f"Searching your resume for evidence of {len(job.requirements)} requirements"
         )
-        await self.in_thread(self.deps.vectors.index_resume, ctx.conversation_id, "working", resume)
+        # One batched embedding + vector query for all requirements (not one per requirement).
+        evidence = await self.in_thread(
+            self.deps.vectors.search_resume_many,
+            ctx.conversation_id,
+            [req.name for req in job.requirements],
+            2,
+        )
         evidence_lines = []
-        for req in job.requirements:
-            hits = await self.in_thread(
-                self.deps.vectors.search_resume, ctx.conversation_id, req.name, 2
-            )
+        for req, hits in zip(job.requirements, evidence, strict=False):
             snippets = " | ".join(h.text for h in hits if h.score > 0.2) or "(no close match)"
             evidence_lines.append(f"- {req.name} [{req.importance}, {req.category}]: {snippets}")
 

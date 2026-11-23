@@ -139,21 +139,24 @@ def company_profile(system: str, user: str) -> dict:
     }
 
 
-def translation(system: str, user: str) -> dict:
-    sections = []
-    for s in sections_in(user):
-        sections.append(
-            {
-                "section_id": s["id"],
-                "title": HEADINGS_ES.get(s["kind"], s["title"]),
-                "content": s["content"],
-            }
-        )
+OUTLINE_RX = re.compile(r"^- \[(?P<id>[^\]]+)\] (?P<title>.+?) \((?P<kind>[a-z]+)\):", re.MULTILINE)
+
+
+def localization_plan(system: str, user: str) -> dict:
+    headings = [
+        {"section_id": m["id"], "title": HEADINGS_ES.get(m["kind"], m["title"])}
+        for m in OUTLINE_RX.finditer(user)
+    ]
     return {
         "reasoning": "Offline mode: localized headings only; full translation needs a live model.",
-        "sections": sections,
+        "headings": headings,
         "localization_notes": ["Offline mode cannot translate body text."],
     }
+
+
+def section_translation(system: str, user: str) -> dict:
+    sections = sections_in(user)
+    return {"content": sections[0]["content"] if sections else ""}
 
 
 def offline_llm() -> FakeLLM:
@@ -163,7 +166,8 @@ def offline_llm() -> FakeLLM:
             "JobRequirements": job_requirements,
             "MatchAssessment": match_assessment,
             "CompanyProfile": company_profile,
-            "Translation": translation,
+            "LocalizationPlan": localization_plan,
+            "SectionTranslation": section_translation,
         }
     )
     try:  # router/conversation responders are registered by the orchestration package

@@ -153,7 +153,9 @@ async def test_translation_localizes_with_exact_conventions(deps, resume):
     assert result.resume.language == "es" and result.resume.locale == "es-MX"
     assert result.resume.get("experience").title == "Experiencia profesional"
     assert result.insights["conventions_used"] == ["Mexico (es-MX)"]
-    prompt = next(u for name, _, u in deps.llm.calls if name == "Translation")
+    prompt = next(u for name, _, u in deps.llm.calls if name == "SectionTranslation")
+    # Sections are translated in separate (parallel) calls; the header is never sent.
+    assert sum(name == "SectionTranslation" for name, _, _ in deps.llm.calls) == 6
     assert "computadora" in prompt  # Mexico-specific guidance reached the model
 
 
