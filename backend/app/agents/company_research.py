@@ -89,7 +89,10 @@ class CompanyResearchAgent(Agent):
         hits = await self.in_thread(
             vectors.search_company, company, f"{company} values culture hiring {role}", 8
         )
-        return [{"text": h.text, "url": h.metadata.get("url", ""), "title": h.metadata.get("title", "")} for h in hits]
+        return [
+            {"text": h.text, "url": h.metadata.get("url", ""), "title": h.metadata.get("title", "")}
+            for h in hits
+        ]
 
     async def run(self, ctx: AgentContext) -> AgentResult:
         company = (ctx.memory.target_company or "").strip()
@@ -118,7 +121,9 @@ class CompanyResearchAgent(Agent):
         targets = [t for t in ctx.target_sections if resume.get(t)] or default_targets(
             resume, ("summary", "experience", "skills")
         )
-        await ctx.progress("Aligning " + ", ".join(resume.get(t).title for t in targets) + f" with {company}")
+        await ctx.progress(
+            "Aligning " + ", ".join(resume.get(t).title for t in targets) + f" with {company}"
+        )
         profile_text = (
             f"{profile.company}: {profile.summary}\nValues: {'; '.join(profile.values)}\n"
             f"Hiring signals: {'; '.join(profile.hiring_signals)}\n"

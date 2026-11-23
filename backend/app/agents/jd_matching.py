@@ -87,7 +87,9 @@ def keyword_coverage(keywords: list[str], text: str) -> tuple[list[str], list[st
 def requirement_score(reqs: list[Requirement], matches: list[RequirementMatch]) -> float:
     by_name = {m.name.lower(): m.status for m in matches}
     total = sum(WEIGHTS[r.importance] for r in reqs) or 1.0
-    earned = sum(WEIGHTS[r.importance] * CREDIT[by_name.get(r.name.lower(), "missing")] for r in reqs)
+    earned = sum(
+        WEIGHTS[r.importance] * CREDIT[by_name.get(r.name.lower(), "missing")] for r in reqs
+    )
     return 100.0 * earned / total
 
 
@@ -126,11 +128,15 @@ class JDMatchingAgent(Agent):
             name="extract_requirements",
         )
 
-        await ctx.progress(f"Searching your resume for evidence of {len(job.requirements)} requirements")
+        await ctx.progress(
+            f"Searching your resume for evidence of {len(job.requirements)} requirements"
+        )
         await self.in_thread(self.deps.vectors.index_resume, ctx.conversation_id, "working", resume)
         evidence_lines = []
         for req in job.requirements:
-            hits = await self.in_thread(self.deps.vectors.search_resume, ctx.conversation_id, req.name, 2)
+            hits = await self.in_thread(
+                self.deps.vectors.search_resume, ctx.conversation_id, req.name, 2
+            )
             snippets = " | ".join(h.text for h in hits if h.score > 0.2) or "(no close match)"
             evidence_lines.append(f"- {req.name} [{req.importance}, {req.category}]: {snippets}")
 
@@ -153,7 +159,9 @@ class JDMatchingAgent(Agent):
         await ctx.progress(
             "Tailoring " + ", ".join(resume.get(t).title for t in targets) + " to the job"
         )
-        status_lines = "\n".join(f"- {m.name}: {m.status} ({m.evidence})" for m in assessment.matches)
+        status_lines = "\n".join(
+            f"- {m.name}: {m.status} ({m.evidence})" for m in assessment.matches
+        )
         plan = await llm.structured(
             EditPlan,
             TAILOR_SYSTEM,
@@ -174,9 +182,7 @@ class JDMatchingAgent(Agent):
         found_after, missing_after = keyword_coverage(job.keywords, updated.to_text())
         score_after = match_score(req_score, len(found_after), len(job.keywords))
         gaps = [
-            {"name": m.name, "status": m.status}
-            for m in assessment.matches
-            if m.status != "met"
+            {"name": m.name, "status": m.status} for m in assessment.matches if m.status != "met"
         ]
         return AgentResult(
             agent=self.name,

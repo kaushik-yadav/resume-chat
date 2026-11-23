@@ -21,7 +21,9 @@ WEAK_OPENERS = re.compile(
 )
 FIRST_PERSON = re.compile(r"\b(I|my|me)\b")
 DATE_STYLES = {
-    "Mon YYYY": re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.? \d{4}\b"),
+    "Mon YYYY": re.compile(
+        r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.? \d{4}\b"
+    ),
     "MM/YYYY": re.compile(r"\b\d{1,2}/\d{4}\b"),
     "Month YYYY": re.compile(
         r"\b(?:January|February|March|April|June|July|August|September|October|November|December) \d{4}\b"

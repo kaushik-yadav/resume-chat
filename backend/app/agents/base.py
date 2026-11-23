@@ -125,7 +125,9 @@ class Agent(ABC):
             if check_numbers:
                 warnings.extend(check_edit(source, section, content))
             section.content = content
-            applied.append(AppliedEdit(section_id=section.id, title=section.title, rationale=edit.rationale))
+            applied.append(
+                AppliedEdit(section_id=section.id, title=section.title, rationale=edit.rationale)
+            )
         holes = sum(len(placeholders(resume.get(e.section_id).content)) for e in applied)
         if holes:
             warnings.append(
