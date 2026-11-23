@@ -34,7 +34,7 @@ One chat turn:
    version**, with per-section diffs, and re-indexed in Chroma.
 4. The assistant message is stored with its full **trace**: router reasoning, the plan,
    every agent's reasoning, edits, insights and warnings, and LLM calls, latency and tokens.
-   The UI renders that trace under each reply as "Agent reasoning".
+   The UI renders that trace under each reply ("Show what the agent did").
 5. Conversation memory is updated, and old turns are summarized when history grows.
 
 ## 2. Routing cascade
@@ -178,6 +178,8 @@ contain resume content, to a hosted service, so it should be an explicit opt-in.
 | Nested trace/resume maps were slow to (de)serialize | Large nested fields stored as JSON strings (legacy documents still readable) | cold conversation load 1.81 s → 0.67 s |
 | Retries could re-run a whole turn | Idempotency key per message; stored answer replayed | retry 0.4 s, no agent work |
 
+| PDF export rendered on click (~250 ms) | Trimmed, unhinted fonts; per-version cache (versions are immutable); background pre-render when a version is saved | first download ~150 ms → served from cache in 4–20 ms |
+
 Each reply's trace records `timings_ms` (prepare, graph and persist), so regressions are visible.
 
 ## 6. The agents
@@ -209,6 +211,26 @@ and, for translations, figures and dates that went missing. Agents are instructe
 are surfaced to the user as action items. In live testing, the guard caught the model
 deriving "66%" from "6 hours to 2 hours". The prompt was then tightened to forbid derived
 figures.
+
+### Line-targeted edits
+
+"Change these two lines" must change exactly those lines. Leaving that to the LLM is not
+enough: a router that only says `target_sections: ["experience"]` gives the agent the whole
+section, and a rewrite of the whole section follows. So the scope is enforced in code:
+
+1. `orchestration/line_targets.py` matches the message against the resume line by line:
+   lines selected in the UI, pasted lines and quoted spans. A candidate counts when it is
+   contained in a resume line or matches it with a similarity of at least 0.82. More than eight
+   matches means a pasted block, which is not treated as a target.
+2. When the intent is an edit, `scope_to_lines` narrows the plan to the Section Enhancement
+   agent with `target_lines` (a translation step is kept). Line-scoped plans are never cached,
+   because the same words can point at different lines in the next version.
+3. In line mode the agent sees the section with numbered lines and returns
+   `{line_id, replacement}` pairs. Code applies only those replacements, keeps bullet markers
+   and leaves every other line unchanged.
+
+The UI sends a selection with the message ("Edit selection" on highlighted resume text), shows
+the targeted lines in the agent's flow node, and shows each edit as before → after.
 
 ## 7. Context engineering
 
@@ -242,6 +264,63 @@ accurate, because the graph runs ahead of the consumer of its event stream:
 
 Snapshots stream as `flow` events, so the **Agent flow** tab animates live. The final
 snapshot is stored in the message trace, so any past reply can be replayed with "View flow".
+
+### Frontend design system
+
+The Graphite design (chosen after exploring five token-based variants). Every component uses
+design tokens only: colours, two type roles (Rajdhani for display, Saira for body), heading case
+and tracking, the heading rule, radii and shadows. Nested rounded boxes follow
+`inner radius = outer radius − padding`, computed per element in CSS (`--r-in`). Scrollbars,
+selection colour and focus rings come from the same tokens.
+
+Token usage is only reported when an LLM call ends, so during a turn the UI shows an estimate:
+finished calls' real usage, plus streamed reply characters ÷ 4, plus elapsed time × 55 tokens/s
+on calls still running (with a prompt-size allowance). When the turn finishes, the meter eases to
+the exact count from the final flow snapshot.
+
+### Export
+
+**Original layout (default).** The uploaded file is stored with the conversation, and a
+download edits *that file* (`services/layout_export.py`, PyMuPDF for PDF, python-docx for DOCX):
+
+1. Every glyph of the PDF is read with its font, size, colour and position, and each line of the
+   parsed original is located among them by its letters and digits.
+2. The target version is diffed line by line against the original. For each changed line only
+   its glyphs are redacted (removed from the file, not painted over); unchanged leading words,
+   originally bold keywords and a right-aligned date keep their exact place.
+3. The new words are drawn one by one on the old baselines. The original embedded font is reused
+   when it has every new character with the original widths; otherwise the same font installed
+   on the server, then Times/Helvetica/Courier by style, then bundled Noto Sans or a CJK font.
+   Text wraps into the old line's space plus free space below it, shrinking to at most 82% size
+   and 90% width; failing that, the whole line is re-flowed before giving up.
+4. The output is read back: every new line must be present and every replaced line gone.
+
+When the original cannot hold an edit (a PDF gaining lines or sections, a line that cannot be
+located or no longer fits) the export falls back to the clean layout below and reports why
+(`X-Export-Layout`/`X-Export-Note`, and a badge on each History card). DOCX files are edited
+paragraph by paragraph and can take added lines. Replacement text is written after the rest of
+the page in the PDF's content stream; layout-aware parsers read it in place, and our own
+uploader recognizes these files and reads them in position order. Measured on 18 real PDFs:
+original layout kept on 18/18 rewordings, 18/18 with ~15% longer bullets and 16/18 full rewrites
+(0.3–0.4 s median, 1.2 s when every line changes, rendered in the background).
+
+**Clean layout (fallback, or `layout=clean`).** `services/pdf_export.py` renders a single-column, ATS-friendly PDF with **fpdf2**: pure Python,
+LGPL, no system libraries. The alternatives were WeasyPrint (needs GTK, slower), headless
+Chrome (heavy) and PyMuPDF (fast, but AGPL). Details that matter for a resume:
+
+- **Reading order**: each role's title is drawn before its right-aligned date, so ATS parsers
+  and text extractors read "Role … Jan 2024 – Present", not the date first.
+- **Fonts**: Noto Sans, trimmed to Latin, Greek, Cyrillic and Vietnamese and stripped of
+  hinting (`scripts/build_pdf_fonts.py`: 610 KB → 130 KB). Fonts are parsed and subset for every
+  document, so this is most of the speed-up. Other scripts (e.g. Japanese after a translation)
+  use the first installed font that covers them, loaded only when needed
+  (`PDF_FALLBACK_FONTS`, then common system paths). Decorative icons (✉ 📞) are dropped and
+  bullet-like symbols drawn as •, rather than loading a large symbol font.
+- **Fidelity**: entries use the same rules as the on-screen resume (title, subtitle, date,
+  tech stack, bullets), but nothing is ever dropped from the file. `evals/extraction_check.py`
+  reads every export back through the upload parser: ≥ 99.9% word recall on 21 real resumes.
+- **Latency**: renders are cached per version and pre-rendered in the background when a
+  version is saved, so a download is usually served from memory (4–20 ms).
 
 ## 8. State and persistence
 
@@ -279,19 +358,26 @@ conversations/{id}/versions/{id}    number, parent_id, source(upload|agents|rest
 | **Chroma** | Embedded vector DB, no service to run, metadata filtering per conversation/company, persistent on disk. |
 | **Tavily** (LangChain integration) with DuckDuckGo fallback | Tavily returns clean, LLM-ready snippets; DuckDuckGo keeps the agent working without a key. Queries run concurrently and are de-duplicated. Results are cached per company (72 h TTL). |
 | **Firestore** | Required by the brief; document model fits conversation → messages/versions subcollections. Emulator for local development. |
+| **PyMuPDF** for original-layout export | The only library that can remove individual glyphs (true redaction) and reuse a PDF's embedded fonts. AGPL-licensed: a closed-source SaaS needs Artifex's commercial licence. |
+| **fpdf2** for the clean PDF | Fast enough to pre-render every version (~150 ms per page set), pure Python with no system dependencies, LGPL. |
 | **Deterministic parsing** (pypdf / python-docx + heading classifier) | Instant, free and testable. Handles DOCX tables and ignores ALL-CAPS names and job titles that naive heading detectors mistake for sections. |
 | **Server-Sent Events** | One-way server→client streaming is all a chat turn needs. Simpler than WebSockets and works through proxies. The UI parses SSE from a `fetch` POST. |
 
 ## 10. Limitations and next steps
 
-- **Latency:** multi-agent turns take 30–40 s. Next steps: run independent analysis steps in
-  parallel (e.g. JD extraction while the resume is indexed), cache company profiles as well
-  as raw snippets, and use a smaller model for the router.
+- **Latency:** on the Pro plan, single-agent edits take 6–16 s and JD matching 24–28 s; a
+  two-agent request ~22 s (Free: ~4–5 s per edit). Next steps: run JD extraction while the
+  resume is indexed, cache company profiles as well as raw snippets.
+- **Original-layout PDFs:** a deleted line leaves a blank row (a PDF cannot reflow), and a PDF
+  cannot gain lines or sections (the DOCX path can); those cases fall back to the clean layout.
+  Link underlines drawn as graphics stay where they were if the linked text moves.
 - **Parsing:** scanned PDFs need OCR; multi-column PDFs can interleave columns. An optional
   LLM restructuring pass would help for messy layouts.
 - **Evaluation:** add an offline eval set (resume, request, expected plan and rubric) to
   regression-test the router and agent prompts when models change.
 - **Auth and multi-tenancy:** conversations are not user-scoped yet. Add Firebase Auth and
   scope documents by `uid`.
-- **Export fidelity:** DOCX export is clean but generic; templated layouts would be a product
-  feature.
+- **Export:** PDF and DOCX use one clean layout; a choice of templates would be a product
+  feature. Long resumes run to a second page (no automatic fit-to-one-page yet).
+- **Parsing:** resumes that contain no name or contact details (seen in 2 of 21 real files)
+  get an empty header; the UI could prompt for them.
