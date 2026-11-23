@@ -15,38 +15,99 @@ from app.models.resume import Resume, ResumeSection, SectionKind
 HEADING_KINDS: dict[str, SectionKind] = {}
 _HEADINGS: dict[SectionKind, list[str]] = {
     "summary": [
-        "summary", "professional summary", "career summary", "profile", "professional profile",
-        "about", "about me", "objective", "career objective", "overview", "executive summary",
-        "resumen", "perfil", "perfil profesional", "resumen profesional", "acerca de mi",
+        "summary",
+        "professional summary",
+        "career summary",
+        "profile",
+        "professional profile",
+        "about",
+        "about me",
+        "objective",
+        "career objective",
+        "overview",
+        "executive summary",
+        "resumen",
+        "perfil",
+        "perfil profesional",
+        "resumen profesional",
+        "acerca de mi",
     ],
     "experience": [
-        "experience", "work experience", "professional experience", "employment",
-        "employment history", "work history", "career history", "relevant experience",
-        "experiencia", "experiencia laboral", "experiencia profesional",
+        "experience",
+        "work experience",
+        "professional experience",
+        "employment",
+        "employment history",
+        "work history",
+        "career history",
+        "relevant experience",
+        "experiencia",
+        "experiencia laboral",
+        "experiencia profesional",
     ],
     "education": [
-        "education", "academic background", "education and training", "academics",
-        "educación", "educacion", "formación", "formacion", "formación académica",
+        "education",
+        "academic background",
+        "education and training",
+        "academics",
+        "educación",
+        "educacion",
+        "formación",
+        "formacion",
+        "formación académica",
     ],
     "skills": [
-        "skills", "technical skills", "core skills", "key skills", "core competencies",
-        "competencies", "technologies", "tech stack", "tools", "skills and tools",
-        "habilidades", "competencias", "aptitudes", "habilidades técnicas",
+        "skills",
+        "technical skills",
+        "core skills",
+        "key skills",
+        "core competencies",
+        "competencies",
+        "technologies",
+        "tech stack",
+        "tools",
+        "skills and tools",
+        "habilidades",
+        "competencias",
+        "aptitudes",
+        "habilidades técnicas",
     ],
     "projects": [
-        "projects", "personal projects", "selected projects", "key projects",
-        "academic projects", "proyectos",
+        "projects",
+        "personal projects",
+        "selected projects",
+        "key projects",
+        "academic projects",
+        "proyectos",
     ],
     "certifications": [
-        "certifications", "certificates", "licenses", "licenses and certifications",
-        "certifications and licenses", "certificaciones",
+        "certifications",
+        "certificates",
+        "licenses",
+        "licenses and certifications",
+        "certifications and licenses",
+        "certificaciones",
     ],
-    "awards": ["awards", "honors", "honours", "achievements", "awards and honors", "premios", "logros"],
+    "awards": [
+        "awards",
+        "honors",
+        "honours",
+        "achievements",
+        "awards and honors",
+        "premios",
+        "logros",
+    ],
     "publications": ["publications", "papers", "research", "publicaciones"],
     "languages": ["languages", "idiomas"],
     "volunteer": ["volunteer", "volunteering", "volunteer experience", "voluntariado"],
     "interests": ["interests", "hobbies", "intereses"],
-    "other": ["additional information", "activities", "leadership", "references", "información adicional"],
+    "other": [
+        "additional information",
+        "activities",
+        "leadership",
+        "references",
+        "información adicional",
+    ],
 }
 for _kind, _names in _HEADINGS.items():
     for _name in _names:
@@ -128,7 +189,9 @@ def sectionize(text: str) -> Resume:
         if not content and current_kind == "header":
             return
         sid = _slug(current_kind, used)
-        sections.append(ResumeSection(id=sid, title=current_title, kind=current_kind, content=content))
+        sections.append(
+            ResumeSection(id=sid, title=current_title, kind=current_kind, content=content)
+        )
 
     for line in lines:
         kind = classify_heading(line)
@@ -147,7 +210,15 @@ def sectionize(text: str) -> Resume:
     return Resume(sections=sections, language=_guess_language(text))
 
 
-_ES_MARKERS = {"experiencia", "educación", "habilidades", "desarrollé", "responsable", "años", "empresa"}
+_ES_MARKERS = {
+    "experiencia",
+    "educación",
+    "habilidades",
+    "desarrollé",
+    "responsable",
+    "años",
+    "empresa",
+}
 
 
 def _guess_language(text: str) -> str:

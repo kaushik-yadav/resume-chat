@@ -54,7 +54,9 @@ class Resume(BaseModel):
         return [s.id for s in self.sections]
 
     # ----------------------------------------------------------------- editing
-    def with_section_content(self, section_id: str, content: str, title: str | None = None) -> Resume:
+    def with_section_content(
+        self, section_id: str, content: str, title: str | None = None
+    ) -> Resume:
         """Return a copy with one section's content (and optionally title) replaced."""
         copy = self.model_copy(deep=True)
         section = copy.get(section_id)
