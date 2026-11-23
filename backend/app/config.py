@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     firebase_credentials: str | None = None
     # e.g. "localhost:8080" - when set, the Firestore emulator is used.
     firestore_emulator_host: str | None = None
+    # "grpc" (default) or "rest" for networks where gRPC/HTTP2 connections are blocked.
+    firestore_transport: Literal["grpc", "rest"] = "grpc"
 
     # --- Context engineering --------------------------------------------
     history_window: int = 8  # recent messages passed verbatim to the router
