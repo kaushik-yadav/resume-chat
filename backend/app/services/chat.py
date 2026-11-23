@@ -22,6 +22,7 @@ from app.orchestration.graph import build_graph, result_summary
 from app.parsing.sectionizer import parse_resume
 from app.retrieval.vector_store import VectorStore
 from app.services.context import build_history, maybe_summarize
+from app.services.flow import FlowRecorder
 from app.services.versioning import VersionError, VersionService
 from app.storage.base import Repository
 
@@ -176,6 +177,8 @@ class ChatService:
         content = text if not job_description else f"{text}\n\n[Attached job description]"
         user_msg = await self._add_message(conv, ChatMessage(role="user", content=content))
         yield {"type": "user_message", "message": user_msg.model_dump(mode="json")}
+        flow = FlowRecorder(trace, text, bool(job_description and job_description.strip()))
+        yield {"type": "flow", **flow.snapshot()}
 
         state = {
             "conversation_id": conversation_id,
@@ -188,12 +191,15 @@ class ChatService:
         async for mode, chunk in self.graph.astream(state, stream_mode=["custom", "values"]):
             if mode == "custom":
                 yield chunk
+                if flow.observe(chunk):
+                    yield {"type": "flow", **flow.snapshot()}
             else:
                 final = chunk
 
         decision = final["decision"]
         memory = final["memory"]
         reply = final.get("reply", "")
+        flow.response_done(reply)
         version: ResumeVersion | None = None
         if decision.intent in ("undo", "redo"):
             try:
@@ -203,8 +209,10 @@ class ChatService:
                     f"{'Reverted' if decision.intent == 'undo' else 'Re-applied'} - you're now on "
                     f"version {version.number} ({version.label})."
                 )
+                flow.version_saved(version.number, version.label, [], op=decision.intent)
             except VersionError as exc:
                 reply = str(exc)
+                flow.version_failed(reply)
             yield {"type": "token", "text": reply}
 
         results = final.get("results", [])
@@ -221,6 +229,9 @@ class ChatService:
             )
             if version is not None:
                 await self._io(self.vectors.index_resume, conv.id, version.id, version.resume)
+                flow.version_saved(
+                    version.number, version.label, [c.title for c in version.changes]
+                )
                 yield {
                     "type": "version",
                     "version": version.model_dump(mode="json"),
@@ -231,6 +242,9 @@ class ChatService:
                     sorted({c.title for c in version.changes})
                 )
 
+        flow.close()
+        final_flow = flow.snapshot()
+        yield {"type": "flow", **final_flow}
         assistant = ChatMessage(
             role="assistant",
             content=reply or "Done.",
@@ -242,6 +256,7 @@ class ChatService:
                 "results": [result_summary(r) for r in results],
                 "llm": trace.as_dict(),
                 "ms": int((time.perf_counter() - started) * 1000),
+                "flow": final_flow,
             },
         )
         assistant = await self._add_message(conv, assistant)

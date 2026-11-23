@@ -44,6 +44,7 @@ class LLMCall:
     ms: int
     input_tokens: int = 0
     output_tokens: int = 0
+    node: str = ""  # workflow node that made the call (see ``current_node``)
 
 
 @dataclass
@@ -73,9 +74,14 @@ def start_trace() -> LLMTrace:
     return trace
 
 
+# Set by each workflow node so LLM calls can be attributed to it in the execution flow.
+current_node: contextvars.ContextVar[str] = contextvars.ContextVar("llm_node", default="")
+
+
 def _record(call: LLMCall) -> None:
     trace = _current_trace.get()
     if trace is not None:
+        call.node = call.node or current_node.get()
         trace.calls.append(call)
 
 
