@@ -1,4 +1,5 @@
-import { AlertTriangle, Building2, FileSearch, Languages, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
+import { AlertTriangle, ArrowRight, Building2, FileSearch, Languages, Sparkles } from "lucide-react";
 import type { AgentResult } from "../types";
 
 export const AGENT_ICONS: Record<string, typeof Sparkles> = {
@@ -8,90 +9,127 @@ export const AGENT_ICONS: Record<string, typeof Sparkles> = {
   section_enhancement: Sparkles,
 };
 
-function Score({ before, after }: { before: number; after: number }) {
+function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="score">
-      <span>Match</span>
-      <div className="bar" aria-hidden>
-        <span style={{ width: `${after}%` }} />
-      </div>
-      <b>{after}</b>
-      <span className="sub">{after !== before ? `was ${before}` : "/ 100"}</span>
-    </div>
+    <section className="ac-block">
+      <h5>{title}</h5>
+      {children}
+    </section>
   );
 }
 
-/** One specialist agent's reasoning, edits and insights. */
+/** One specialist agent's result: why, what changed, evidence, and what needs review. */
 export default function AgentCard({ result }: { result: AgentResult }) {
   const Icon = AGENT_ICONS[result.agent] ?? Sparkles;
   const ins = result.insights ?? {};
+  const requirements: any[] = Array.isArray(ins.requirements) ? ins.requirements : [];
+  const lineEdits: { before: string; after: string }[] = Array.isArray(ins.edited_lines) ? ins.edited_lines : [];
+
   return (
-    <div className="agent-card">
-      <h4>
-        <Icon size={15} /> {result.title}
-      </h4>
-      <p className="reason">{result.reasoning}</p>
+    <article className="agent-card">
+      <header className="ac-head">
+        <span className="ac-icon">
+          <Icon size={16} />
+        </span>
+        <h4>{result.title}</h4>
+      </header>
+      <p className="ac-reason">{result.reasoning}</p>
 
       {typeof ins.match_score_after === "number" && (
-        <Score before={ins.match_score_before} after={ins.match_score_after} />
-      )}
-      {Array.isArray(ins.requirements) && ins.requirements.length > 0 && (
-        <div className="kv" title="Requirement coverage">
-          {ins.requirements.map((r: any) => (
-            <span key={r.name} className={`chip ${r.status}`} title={r.evidence || "No evidence found"}>
-              {r.name}
+        <Block title="Match score">
+          <div className="score">
+            <div className="bar" aria-hidden>
+              <span style={{ width: `${ins.match_score_after}%` }} />
+            </div>
+            <b>{ins.match_score_after}</b>
+            <span className="muted">
+              {ins.match_score_after !== ins.match_score_before ? `was ${ins.match_score_before}` : "of 100"}
             </span>
-          ))}
-        </div>
+          </div>
+          {requirements.length > 0 && (
+            <ul className="chip-row">
+              {requirements.map((r) => (
+                <li key={r.name} className={`chip is-${r.status}`} title={r.evidence || "No evidence in your resume"}>
+                  {r.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Block>
       )}
-      {Array.isArray(ins.keywords_missing) && ins.keywords_missing.length > 0 && (
-        <div className="sub">Missing keywords: {ins.keywords_missing.join(", ")}</div>
+
+      {lineEdits.length > 0 && (
+        <Block title={lineEdits.length === 1 ? "Edited line" : `Edited lines (${lineEdits.length})`}>
+          <ul className="ac-line-edits">
+            {lineEdits.map((e, i) => (
+              <li key={i}>
+                <span className="before">{e.before.replace(/^- /, "")}</span>
+                <ArrowRight size={13} aria-hidden />
+                <span className="after">{e.after.replace(/^- /, "")}</span>
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+
+      {lineEdits.length === 0 && result.edits.length > 0 && (
+        <Block title="Changes">
+          <ul className="ac-list">
+            {result.edits.map((e) => (
+              <li key={e.section_id}>
+                <strong>{e.title}</strong>
+                <span>{e.rationale}</span>
+              </li>
+            ))}
+          </ul>
+        </Block>
       )}
 
       {ins.company_profile && (
-        <>
-          <div className="kv">
+        <Block title={`What ${ins.company_profile.company ?? "they"} value`}>
+          <ul className="chip-row">
             {(ins.company_profile.values ?? []).map((v: string) => (
-              <span key={v} className="chip">{v}</span>
+              <li key={v} className="chip">
+                {v}
+              </li>
             ))}
-          </div>
-          <div className="sub">Emphasis: {(ins.company_profile.emphasis ?? []).join(" · ")}</div>
-        </>
-      )}
-      {Array.isArray(ins.localization_notes) && ins.localization_notes.length > 0 && (
-        <ul>
-          {ins.localization_notes.map((n: string) => <li key={n}>{n}</li>)}
-        </ul>
-      )}
-      {Array.isArray(ins.issues_found) && ins.issues_found.length > 0 && (
-        <div className="sub">Fixed: {ins.issues_found.join("; ")}</div>
+          </ul>
+        </Block>
       )}
 
-      {result.edits.length > 0 && (
-        <ul>
-          {result.edits.map((e) => (
-            <li key={e.section_id}>
-              <b>{e.title}</b>: {e.rationale}
-            </li>
-          ))}
-        </ul>
+      {Array.isArray(ins.localization_notes) && ins.localization_notes.length > 0 && (
+        <Block title="Localization notes">
+          <ul className="ac-notes">
+            {ins.localization_notes.map((n: string) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </Block>
       )}
+
       {Array.isArray(ins.sources) && ins.sources.length > 0 && (
-        <div className="sub">
-          Sources:{" "}
-          {ins.sources.map((s: any, i: number) => (
-            <span key={s.url}>
-              {i > 0 && " · "}
-              <a href={s.url} target="_blank" rel="noreferrer">{s.title || new URL(s.url).hostname}</a>
-            </span>
-          ))}
-        </div>
+        <Block title="Sources">
+          <ul className="ac-sources">
+            {ins.sources.map((s: any) => (
+              <li key={s.url}>
+                <a href={s.url} target="_blank" rel="noreferrer">
+                  {s.title || new URL(s.url).hostname}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Block>
       )}
-      {result.warnings.map((w) => (
-        <div key={w} className="warning">
-          <AlertTriangle size={14} style={{ flex: "none", marginTop: 2 }} /> {w}
-        </div>
-      ))}
-    </div>
+
+      {result.warnings.length > 0 && (
+        <Block title="Needs your review">
+          {result.warnings.map((w) => (
+            <p key={w} className="warning">
+              <AlertTriangle size={14} aria-hidden /> <span>{w}</span>
+            </p>
+          ))}
+        </Block>
+      )}
+    </article>
   );
 }

@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Gauge } from "lucide-react";
 import type { Plan } from "../types";
 
-function price(p: { input_per_1m: number | null; output_per_1m: number | null }) {
-  return p.input_per_1m == null ? "n/a" : `$${p.input_per_1m} / $${p.output_per_1m}`;
+const ROLES = [
+  { id: "router", label: "Routing", hint: "Understands the request" },
+  { id: "agent", label: "Agents", hint: "Rewrites the resume" },
+  { id: "reply", label: "Reply", hint: "Writes the chat answer" },
+] as const;
+
+function usd(v: number | null) {
+  return v == null ? "n/a" : `$${v.toFixed(2)}`;
 }
 
-/** Plan switcher: which models serve this conversation (free = lite model everywhere). */
+/** Plan switcher: which models serve this conversation, as comparable cards. */
 export default function PlanPicker({
   plans,
   current,
@@ -27,8 +33,13 @@ export default function PlanPicker({
     const close = (e: MouseEvent) => {
       if (!box.current?.contains(e.target as Node)) setOpen(false);
     };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
   }, [open]);
 
   if (!plans.length) return null;
@@ -37,45 +48,70 @@ export default function PlanPicker({
       <button
         className={`btn small plan-btn plan-${current}`}
         disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((v) => !v)}
         title="Choose the plan (models) for this conversation"
       >
-        <Gauge size={14} /> {active?.name ?? current} <ChevronDown size={13} />
+        <Gauge size={14} /> {active?.name ?? current}
+        <ChevronDown size={14} className={open ? "is-open" : undefined} />
       </button>
       {open && (
-        <div className="plan-menu" role="menu">
-          <div className="plan-menu-head">
-            Plans decide which model runs each step. Prices are per 1M tokens (input / output).
+        <div className="plan-menu" role="dialog" aria-label="Plans">
+          <header className="plan-menu-head">
+            <h3>Plans</h3>
+            <p>Each plan decides which model runs each step. Prices are per 1M tokens.</p>
+          </header>
+          <div className="plan-cards">
+            {plans.map((p) => {
+              const on = p.id === current;
+              return (
+                <button
+                  key={p.id}
+                  className={`plan-card${on ? " is-on" : ""}`}
+                  aria-pressed={on}
+                  onClick={() => {
+                    setOpen(false);
+                    if (!on) onChange(p.id);
+                  }}
+                >
+                  <div className="pc-head">
+                    <h4>{p.name}</h4>
+                    {on && (
+                      <span className="pc-current">
+                        <Check size={12} aria-hidden /> Current
+                      </span>
+                    )}
+                  </div>
+                  <p className="pc-tagline">{p.tagline}</p>
+                  <dl className="pc-roles">
+                    {ROLES.map((role) => {
+                      const price = p.prices[role.id];
+                      return (
+                        <div key={role.id} className="pc-role">
+                          <dt title={role.hint}>{role.label}</dt>
+                          <dd>
+                            <span className="pc-model">{price.model}</span>
+                            {role.id === "agent" && p.agent_effort !== "low" && (
+                              <span className="pc-effort">{p.agent_effort} reasoning</span>
+                            )}
+                            <span className="pc-price">
+                              <span>
+                                <b>{usd(price.input_per_1m)}</b> in
+                              </span>
+                              <span>
+                                <b>{usd(price.output_per_1m)}</b> out
+                              </span>
+                            </span>
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                </button>
+              );
+            })}
           </div>
-          {plans.map((p) => (
-            <button
-              key={p.id}
-              role="menuitemradio"
-              aria-checked={p.id === current}
-              className={`plan-row ${p.id === current ? "on" : ""}`}
-              onClick={() => {
-                setOpen(false);
-                if (p.id !== current) onChange(p.id);
-              }}
-            >
-              <div className="plan-row-head">
-                <b>{p.name}</b>
-                {p.id === current && <Check size={14} />}
-                <span className="sub">{p.tagline}</span>
-              </div>
-              <table>
-                <tbody>
-                  {(["router", "agent", "reply"] as const).map((role) => (
-                    <tr key={role}>
-                      <td className="sub">{role === "agent" ? "Agents" : role === "router" ? "Routing" : "Reply"}</td>
-                      <td><code>{p.prices[role].model}</code>{role === "agent" && p.agent_effort !== "low" && ` · ${p.agent_effort} reasoning`}</td>
-                      <td className="sub">{price(p.prices[role])}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </button>
-          ))}
         </div>
       )}
     </div>
