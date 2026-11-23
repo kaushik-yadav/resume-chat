@@ -15,7 +15,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.api.resumes import read_upload
 from app.parsing.extract import ResumeParseError
 from app.services.chat import ChatError, ChatService
-from app.services.export import to_docx, to_markdown
+from app.services.export import render_export
 from app.services.versioning import VersionError
 from app.storage.base import NotFoundError
 
@@ -30,6 +30,8 @@ class ChatRequest(BaseModel):
     client_message_id: str | None = Field(default=None, max_length=64)
     # Suggested-action id: the plan is predefined, so intent classification is skipped.
     preset: str | None = Field(default=None, max_length=64)
+    # Text the user selected in the resume: an edit then changes only those lines.
+    selection: list[str] | None = Field(default=None, max_length=10)
 
 
 class PlanRequest(BaseModel):
@@ -121,6 +123,7 @@ async def chat(request: Request, conversation_id: str, body: ChatRequest) -> Eve
                 body.job_description,
                 client_message_id=body.client_message_id,
                 preset=body.preset,
+                selection=body.selection,
             ):
                 yield {"event": event["type"], "data": json.dumps(event, default=str)}
         except ChatError as exc:
@@ -198,8 +201,9 @@ def compare(
 def export(
     request: Request,
     conversation_id: str,
-    format: Literal["docx", "md"] = "docx",
+    format: Literal["pdf", "docx", "md"] = "docx",
     version_id: str | None = None,
+    layout: Literal["original", "clean"] = "original",
 ) -> Response:
     svc = service(request)
     try:
@@ -212,11 +216,27 @@ def export(
         raise _not_found(exc) from exc
     stem = re.sub(r"[^\w-]+", "_", (conv.filename or "resume").rsplit(".", 1)[0])
     name = f"{stem}_v{version.number}.{format}"
-    if format == "docx":
-        body = to_docx(version.resume)
-        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    else:
-        body, media = to_markdown(version.resume), "text/markdown; charset=utf-8"
-    return Response(
-        body, media_type=media, headers={"Content-Disposition": f'attachment; filename="{name}"'}
-    )
+    result = render_export(conversation_id, version, format, svc.repo, layout)
+    headers = {
+        "Content-Disposition": f'attachment; filename="{name}"',
+        "X-Export-Layout": result.layout,  # "original" or "clean"
+        "Access-Control-Expose-Headers": "X-Export-Layout, X-Export-Note",
+    }
+    if result.note:
+        headers["X-Export-Note"] = result.note.encode("ascii", "replace").decode()[:300]
+    return Response(result.body, media_type=result.media, headers=headers)
+
+
+@router.get("/{conversation_id}/export/info")
+def export_info(request: Request, conversation_id: str, version_id: str) -> dict:
+    """Which layout each download of a version gets (rendered once, then cached)."""
+    svc = service(request)
+    try:
+        version = svc.repo.get_version(conversation_id, version_id)
+    except NotFoundError as exc:
+        raise _not_found(exc) from exc
+    out = {}
+    for fmt in ("pdf", "docx"):
+        result = render_export(conversation_id, version, fmt, svc.repo)
+        out[fmt] = {"layout": result.layout, "note": result.note}
+    return out

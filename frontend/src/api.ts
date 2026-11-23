@@ -72,8 +72,12 @@ export const api = {
     request<SectionChange[]>(
       `/conversations/${id}/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     ),
-  exportUrl: (id: string, format: "docx" | "md", versionId?: string) =>
-    `${BASE}/conversations/${id}/export?format=${format}${versionId ? `&version_id=${versionId}` : ""}`,
+  exportUrl: (id: string, format: "pdf" | "docx" | "md", versionId?: string, layout?: "clean") =>
+    `${BASE}/conversations/${id}/export?format=${format}${versionId ? `&version_id=${versionId}` : ""}${layout ? `&layout=${layout}` : ""}`,
+  exportInfo: (id: string, versionId: string) =>
+    request<Record<"pdf" | "docx", { layout: "original" | "clean"; note: string }>>(
+      `/conversations/${id}/export/info?version_id=${encodeURIComponent(versionId)}`,
+    ),
 };
 
 /**
@@ -86,6 +90,8 @@ export interface ChatOptions {
   clientMessageId: string;
   /** Suggested-action id: the server skips intent classification. */
   preset?: string | null;
+  /** Lines selected in the resume: only these change. */
+  selection?: string[];
   signal?: AbortSignal;
 }
 
@@ -103,6 +109,7 @@ export async function streamChat(
       job_description: options.jobDescription || null,
       client_message_id: options.clientMessageId,
       preset: options.preset || null,
+      selection: options.selection?.length ? options.selection : null,
     }),
     signal: options.signal,
   });

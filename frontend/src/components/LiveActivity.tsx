@@ -1,72 +1,47 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { CheckCircle2, Circle, Loader2 } from "lucide-react";
-import type { LiveTurn } from "../types";
-import AgentCard from "./AgentCard";
+import { CheckCircle2, Circle, Loader2, Sparkles } from "lucide-react";
+import type { Flow, LiveTurn } from "../types";
+import { useLiveTokens } from "../tokens";
+import TokenMeter from "./TokenMeter";
 
-function Typing() {
-  return (
-    <span className="typing" aria-label="Assistant is typing">
-      <span />
-      <span />
-      <span />
-    </span>
-  );
-}
-
-/** Real-time view of an in-flight turn: routing, agent steps, progress and streamed reply. */
-export default function LiveActivity({ turn }: { turn: LiveTurn }) {
+/** Real-time view of an in-flight turn: plan, step progress, streamed reply, moving token count. */
+export default function LiveActivity({ turn, flow }: { turn: LiveTurn; flow: Flow | null }) {
   const steps = turn.plan?.steps ?? [];
-  const doneAgents = new Set(turn.results.map((r) => r.agent));
+  const done = new Set(turn.results.map((r) => r.agent));
+  const tokens = useLiveTokens(flow, turn.reply.length, true);
+  const latest = turn.progress[turn.progress.length - 1];
+
   return (
-    <div className="msg assistant live" aria-live="polite">
-      <div className="bubble">
-        {turn.plan && turn.plan.intent === "edit" && (
-          <div className="router-note">
-            <strong>Plan:</strong> {turn.plan.reasoning}
-          </div>
-        )}
+    <div className="msg is-assistant is-live" aria-live="polite">
+      <span className="msg-avatar is-live" aria-hidden>
+        <Sparkles size={15} />
+      </span>
+      <div className="msg-body">
+        <div className="live-head">
+          <span className="live-status">{turn.reply ? "Writing the reply" : turn.status}</span>
+          <TokenMeter value={tokens} live compact />
+        </div>
+
         {steps.length > 0 && (
-          <ul className="steps">
+          <ol className="live-steps" aria-label="Plan">
             {steps.map((s) => {
-              const done = doneAgents.has(s.agent);
-              const active = turn.activeAgent === s.agent && !done;
-              const progress = turn.progress.filter((p) => p.agent === s.agent);
+              const isDone = done.has(s.agent);
+              const active = turn.activeAgent === s.agent && !isDone;
               return (
-                <li key={s.agent} className={done ? "done" : active ? "active" : ""}>
-                  {done ? (
-                    <CheckCircle2 className="dot" />
-                  ) : active ? (
-                    <Loader2 className="dot spin" />
-                  ) : (
-                    <Circle className="dot" />
-                  )}
-                  <div>
-                    <div>{s.title ?? s.agent}</div>
-                    {active && progress.length > 0 && (
-                      <div className="progress-line">{progress[progress.length - 1].message}…</div>
-                    )}
-                  </div>
+                <li key={s.agent} className={isDone ? "is-done" : active ? "is-active" : undefined}>
+                  {isDone ? <CheckCircle2 size={14} /> : active ? <Loader2 size={14} className="spin" /> : <Circle size={14} />}
+                  <span>{s.title ?? s.agent}</span>
                 </li>
               );
             })}
-          </ul>
+          </ol>
         )}
-        {turn.results.length > 0 && (
-          <details className="trace">
-            <summary>Agent reasoning so far</summary>
-            <div className="trace-body">
-              {turn.results.map((r) => (
-                <AgentCard key={r.agent} result={r} />
-              ))}
-            </div>
-          </details>
-        )}
-        {turn.reply ? (
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.reply}</ReactMarkdown>
-        ) : (
-          <div className="router-note">
-            {turn.status} <Typing />
+        {latest && !turn.reply && <p className="live-progress">{latest.message}…</p>}
+
+        {turn.reply && (
+          <div className="msg-markdown is-streaming">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.reply}</ReactMarkdown>
           </div>
         )}
       </div>

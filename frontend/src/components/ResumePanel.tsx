@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { History, RotateCcw, Workflow } from "lucide-react";
+import { Download, FileText, GitCompare, History, LayoutTemplate, RotateCcw, Workflow } from "lucide-react";
 import { api } from "../api";
+import ResumeDocument from "../resume/ResumeDocument";
 import type { Flow, ResumeVersion, SectionChange, VersionSummary } from "../types";
+import Carousel from "./Carousel";
 import DiffView from "./DiffView";
 import FlowView from "./FlowView";
-import ResumeSectionBody from "./ResumeSectionBody";
 
 export type Tab = "resume" | "changes" | "history" | "flow";
 
@@ -14,35 +15,6 @@ interface Props {
   versions: VersionSummary[];
   onRestore: (versionId: string) => void;
   busy: boolean;
-}
-
-function ResumeView({ version }: { version: ResumeVersion }) {
-  const changed = new Set(version.changes.map((c) => c.section_id));
-  const { resume } = version;
-  return (
-    <article className="paper">
-      {(resume.language !== "en" || resume.locale) && (
-        <div className="lang-badge">
-          {resume.locale ?? resume.language.toUpperCase()}
-        </div>
-      )}
-      {resume.sections.map((s) =>
-        s.kind === "header" ? (
-          <header key={s.id} className={`r-header section ${changed.has(s.id) ? "changed" : ""}`}>
-            {s.content.split("\n").filter(Boolean).map((line, i) => <p key={i}>{line}</p>)}
-          </header>
-        ) : (
-          <div key={s.id} className={`section ${changed.has(s.id) ? "changed" : ""}`}>
-            <h3>
-              {s.title}
-              {changed.has(s.id) && <span className="changed-tag">● updated</span>}
-            </h3>
-            <ResumeSectionBody content={s.content} />
-          </div>
-        ),
-      )}
-    </article>
-  );
 }
 
 function Changes({ conversationId, version, versions }: Omit<Props, "onRestore" | "busy">) {
@@ -61,55 +33,146 @@ function Changes({ conversationId, version, versions }: Omit<Props, "onRestore" 
     api.compare(conversationId, from, to).then(setChanges).catch(() => setChanges([]));
   }, [conversationId, from, to, version]);
 
-  if (versions.length < 2) return <div className="empty">Changes appear here after the first edit.</div>;
+  if (versions.length < 2) return <div className="empty">Changes show up here after your first edit.</div>;
   const options = versions.map((v) => (
     <option key={v.id} value={v.id}>
-      v{v.number} · {v.label}
+      Version {v.number}: {v.label}
     </option>
   ));
   return (
-    <div>
+    <div className="changes">
       <div className="compare-bar">
-        Compare
-        <select className="btn small" value={from} onChange={(e) => setFrom(e.target.value)}>
-          <option value="">—</option>
-          {options}
-        </select>
-        →
-        <select className="btn small" value={to} onChange={(e) => setTo(e.target.value)}>
-          {options}
-        </select>
+        <label>
+          <span>From</span>
+          <select value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value="">Choose a version</option>
+            {options}
+          </select>
+        </label>
+        <label>
+          <span>To</span>
+          <select value={to} onChange={(e) => setTo(e.target.value)}>
+            {options}
+          </select>
+        </label>
       </div>
-      {changes ? <DiffView changes={changes} /> : <div className="empty">Pick two versions.</div>}
+      {changes ? <DiffView changes={changes} /> : <div className="empty">Pick two versions to compare.</div>}
     </div>
   );
 }
 
-function HistoryList({ version, versions, onRestore, busy }: Omit<Props, "conversationId">) {
+// Full versions for the previews, fetched once each (the server serves them from memory).
+const versionCache = new Map<string, Promise<ResumeVersion>>();
+function loadVersion(conversationId: string, id: string): Promise<ResumeVersion> {
+  const key = `${conversationId}/${id}`;
+  if (!versionCache.has(key)) versionCache.set(key, api.getVersion(conversationId, id));
+  return versionCache.get(key)!;
+}
+
+function VersionPreview({ conversationId, summary }: { conversationId: string; summary: VersionSummary }) {
+  const [full, setFull] = useState<ResumeVersion | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadVersion(conversationId, summary.id).then((v) => alive && setFull(v)).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [conversationId, summary.id]);
   return (
-    <ul className="history">
-      {[...versions].reverse().map((v) => (
-        <li key={v.id} className={v.id === version.id ? "current" : ""}>
-          <span className="num">v{v.number}</span>
-          <div>
-            <div className="label">{v.label}</div>
-            <div className="sub">
-              {new Date(v.created_at).toLocaleString()} ·{" "}
-              {v.changed_sections.length ? `${v.changed_sections.length} section(s) changed` : v.source}
-            </div>
-          </div>
-          <div className="actions">
-            {v.id === version.id ? (
-              <span className="version-chip">current</span>
-            ) : (
-              <button className="btn small" disabled={busy} onClick={() => onRestore(v.id)}>
-                <RotateCcw size={13} /> Restore
-              </button>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="vp-frame" aria-hidden>
+      {full ? (
+        <div className="vp-scale">
+          <ResumeDocument version={full} compact />
+        </div>
+      ) : (
+        <div className="vp-skeleton" />
+      )}
+    </div>
+  );
+}
+
+/** Whether this version's PDF keeps the uploaded file's layout (and why not, when it can't). */
+function LayoutBadge({ conversationId, versionId }: { conversationId: string; versionId: string }) {
+  const [info, setInfo] = useState<{ layout: string; note: string } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    api
+      .exportInfo(conversationId, versionId)
+      .then((r) => alive && setInfo(r.pdf))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [conversationId, versionId]);
+  if (!info) return null;
+  const original = info.layout === "original";
+  return (
+    <span
+      className={`vc-layout${original ? " is-original" : ""}`}
+      title={original ? "The PDF keeps your uploaded file's fonts and placement" : `Clean layout: ${info.note}`}
+    >
+      <LayoutTemplate size={12} aria-hidden /> {original ? "Original layout" : "Clean layout"}
+    </span>
+  );
+}
+
+function HistoryCarousel({ conversationId, version, versions, onRestore, busy }: Props) {
+  const ordered = [...versions].reverse();
+  return (
+    <div className="history">
+      <p className="history-intro">
+        Every change is saved as a version. Restoring one adds it as a new version, so nothing is lost.
+      </p>
+      <Carousel label="Resume versions" itemWidth="248px">
+        {ordered.map((v) => {
+          const current = v.id === version.id;
+          return (
+            <article key={v.id} className={`version-card${current ? " is-current" : ""}`}>
+              <VersionPreview conversationId={conversationId} summary={v} />
+              <div className="vc-body">
+                <div className="vc-head">
+                  <h4>Version {v.number}</h4>
+                  {current && <span className="vc-current">Current</span>}
+                </div>
+                <p className="vc-label">{v.label}</p>
+                <p className="vc-time">{new Date(v.created_at).toLocaleString()}</p>
+                <LayoutBadge conversationId={conversationId} versionId={v.id} />
+                {v.changed_sections.length > 0 && (
+                  <ul className="chip-row">
+                    {v.changed_sections.slice(0, 3).map((s) => (
+                      <li key={s} className="chip">
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="vc-actions">
+                  <div className="btn-group" role="group" aria-label={`Download version ${v.number}`}>
+                    <a className="btn small" href={api.exportUrl(conversationId, "pdf", v.id)} title="Download this version as PDF">
+                      <Download size={13} /> PDF
+                    </a>
+                    <a className="btn small" href={api.exportUrl(conversationId, "docx", v.id)} title="Download this version as Word">
+                      DOCX
+                    </a>
+                    <a className="btn small" href={api.exportUrl(conversationId, "md", v.id)} title="Download this version as Markdown">
+                      MD
+                    </a>
+                  </div>
+                  <a className="vc-clean" href={api.exportUrl(conversationId, "pdf", v.id, "clean")} title="Single-column PDF in our clean, ATS-friendly layout">
+                    Clean PDF
+                  </a>
+                  {!current && (
+                    <button className="btn small" disabled={busy} onClick={() => onRestore(v.id)}>
+                      <RotateCcw size={13} /> Restore
+                    </button>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </Carousel>
+    </div>
   );
 }
 
@@ -118,38 +181,42 @@ interface PanelProps extends Props {
   onTab: (tab: Tab) => void;
   flow: Flow | null;
   flowLive: boolean;
+  replyChars: number;
+  onSelectText: (lines: string[]) => void;
 }
 
+const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
+  { id: "resume", label: "Resume", icon: FileText },
+  { id: "changes", label: "Changes", icon: GitCompare },
+  { id: "history", label: "History", icon: History },
+  { id: "flow", label: "Agent flow", icon: Workflow },
+];
+
 export default function ResumePanel(props: PanelProps) {
-  const { tab, onTab: setTab } = props;
-  const changeCount = props.version.changes.length;
+  const { tab, onTab } = props;
+  const counts: Partial<Record<Tab, number>> = {
+    changes: props.version.changes.length || undefined,
+    history: props.versions.length || undefined,
+  };
   return (
-    <section className="resume-pane" aria-label="Resume">
-      <nav className="tabs">
-        <button className={tab === "resume" ? "on" : ""} onClick={() => setTab("resume")}>
-          Resume
-        </button>
-        <button className={tab === "changes" ? "on" : ""} onClick={() => setTab("changes")}>
-          Changes{changeCount > 0 && <span className="count">{changeCount}</span>}
-        </button>
-        <button className={tab === "history" ? "on" : ""} onClick={() => setTab("history")}>
-          <History size={13} style={{ verticalAlign: -2 }} /> History
-          <span className="count">{props.versions.length}</span>
-        </button>
-        <button className={tab === "flow" ? "on" : ""} onClick={() => setTab("flow")}>
-          <Workflow size={13} style={{ verticalAlign: -2 }} /> Agent flow
-          {props.flowLive && <span className="live-dot" aria-label="running" />}
-        </button>
+    <section className="workspace-pane" aria-label="Resume">
+      <nav className="segmented" role="tablist">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? "is-on" : undefined} onClick={() => onTab(id)}>
+            <Icon size={14} aria-hidden />
+            {label}
+            {counts[id] !== undefined && <span className="tab-count">{counts[id]}</span>}
+            {id === "flow" && props.flowLive && <span className="live-dot" aria-label="running" />}
+          </button>
+        ))}
       </nav>
-      <div className="pane-body">
-        {tab === "resume" && <ResumeView version={props.version} />}
+      <div className="pane-scroll">
+        {tab === "resume" && <ResumeDocument version={props.version} onSelectText={props.onSelectText} />}
         {tab === "changes" && (
           <Changes conversationId={props.conversationId} version={props.version} versions={props.versions} />
         )}
-        {tab === "history" && (
-          <HistoryList version={props.version} versions={props.versions} onRestore={props.onRestore} busy={props.busy} />
-        )}
-        {tab === "flow" && <FlowView flow={props.flow} live={props.flowLive} />}
+        {tab === "history" && <HistoryCarousel {...props} />}
+        {tab === "flow" && <FlowView flow={props.flow} live={props.flowLive} replyChars={props.replyChars} />}
       </div>
     </section>
   );

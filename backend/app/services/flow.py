@@ -138,6 +138,7 @@ class FlowRecorder:
                         "agent": step["agent"],
                         "instruction": step.get("instruction", ""),
                         "target_sections": step.get("target_sections", []),
+                        "target_lines": step.get("target_lines", []),
                     },
                 )
             if intent in RESPOND_LABELS:

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Loader2, Plus, Redo2, Undo2 } from "lucide-react";
+import { Download, FileText, Loader2, Plus, Redo2, Undo2 } from "lucide-react";
+import "./fonts";
 import { ApiError, api, streamChat } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import ResumePanel, { type Tab } from "./components/ResumePanel";
@@ -83,6 +84,8 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("resume");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
+  // Resume lines picked for a targeted edit (set from the resume, sent with the next message).
+  const [selection, setSelection] = useState<string[]>([]);
 
   const refreshVersions = useCallback(async (id: string) => {
     setVersions(await api.listVersions(id));
@@ -141,6 +144,7 @@ export default function App() {
     setVersions([]);
     setFlow(null);
     setError(null);
+    setSelection([]);
     setTab("resume");
     setConversationId(id);
   }
@@ -168,6 +172,7 @@ export default function App() {
     setVersions([]);
     setError(null);
     setFlow(null);
+    setSelection([]);
     setTab("resume");
   }
 
@@ -218,7 +223,7 @@ export default function App() {
     }
   }
 
-  async function send(message: string, jobDescription: string | null, preset: string | null) {
+  async function send(message: string, jobDescription: string | null, preset: string | null, lines: string[] = []) {
     if (!conversationId) return;
     setError(null);
     setLive(emptyTurn());
@@ -227,7 +232,8 @@ export default function App() {
     // One idempotency key per message: if the connection drops, the retry reuses it and the
     // server replays the stored answer instead of running the agents a second time.
     const clientMessageId = crypto.randomUUID();
-    const options = { jobDescription, clientMessageId, preset };
+    const options = { jobDescription, clientMessageId, preset, selection: lines };
+    setSelection([]);
     try {
       try {
         await streamChat(conversationId, message, options, handleEvent);
@@ -267,65 +273,78 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <img src="/favicon.svg" alt="" /> Resume Chat
+          <span className="brand-mark" aria-hidden>
+            <FileText size={16} />
+          </span>
+          <span className="brand-text">
+            <strong>Resume Chat</strong>
+            {state && <span className="brand-sub">{state.conversation.title}</span>}
+          </span>
         </div>
-        {state && <span className="title">· {state.conversation.title}</span>}
-        <span className="spacer" />
-        {recent.length > 0 && (
-          <select
-            className="btn small"
-            aria-label="Open a previous conversation"
-            value={conversationId ?? ""}
-            onChange={(e) => {
-              const id = e.target.value;
-              if (id) openConversation(id);
-            }}
-          >
-            <option value="">Recent…</option>
-            {recent.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        )}
-        {version && conversationId && (
-          <>
-            <button
-              className="btn small"
-              disabled={working || !state?.can_undo}
-              onClick={() => versionAction(() => api.undo(conversationId), false)}
-              title="Undo last change"
+        <div className="topbar-actions">
+          {recent.length > 0 && (
+            <select
+              className="btn small select"
+              aria-label="Open a previous conversation"
+              value={conversationId ?? ""}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (id) openConversation(id);
+              }}
             >
-              <Undo2 size={15} /> Undo
-            </button>
-            <button
-              className="btn small"
-              disabled={working || !state?.can_redo}
-              onClick={() => versionAction(() => api.redo(conversationId), false)}
-              title="Redo"
-            >
-              <Redo2 size={15} /> Redo
-            </button>
-            <a className="btn small" href={api.exportUrl(conversationId, "docx")} title="Download as Word">
-              <Download size={15} /> DOCX
-            </a>
-            <a className="btn small" href={api.exportUrl(conversationId, "md")} title="Download as Markdown">
-              MD
-            </a>
-          </>
-        )}
-        {state && conversationId && (
-          <PlanPicker
-            plans={plans}
-            current={state.plan ?? "pro"}
-            disabled={working}
-            onChange={(plan) => versionAction(() => api.setPlan(conversationId, plan))}
-          />
-        )}
-        <button className="btn small" onClick={newConversation} disabled={!!live}>
-          <Plus size={15} /> New
-        </button>
+              <option value="">Recent chats</option>
+              {recent.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          )}
+          {version && conversationId && (
+            <>
+              <div className="btn-group" role="group" aria-label="History">
+                <button
+                  className="btn small"
+                  disabled={working || !state?.can_undo}
+                  onClick={() => versionAction(() => api.undo(conversationId), false)}
+                  title="Undo last change"
+                >
+                  <Undo2 size={15} /> Undo
+                </button>
+                <button
+                  className="btn small"
+                  disabled={working || !state?.can_redo}
+                  onClick={() => versionAction(() => api.redo(conversationId), false)}
+                  title="Redo"
+                >
+                  <Redo2 size={15} /> Redo
+                </button>
+              </div>
+              <div className="btn-group" role="group" aria-label="Download">
+                <a className="btn small" href={api.exportUrl(conversationId, "pdf")} title="Download as PDF, in your uploaded file's layout when possible">
+                  <Download size={15} /> PDF
+                </a>
+                <a className="btn small" href={api.exportUrl(conversationId, "docx")} title="Download as Word">
+                  DOCX
+                </a>
+                <a className="btn small" href={api.exportUrl(conversationId, "md")} title="Download as Markdown">
+                  MD
+                </a>
+              </div>
+            </>
+          )}
+          {state && conversationId && (
+            <PlanPicker
+              plans={plans}
+              current={state.plan ?? "pro"}
+              disabled={working}
+              onChange={(plan) => versionAction(() => api.setPlan(conversationId, plan))}
+            />
+          )}
+          <button className="btn small primary" onClick={newConversation} disabled={!!live}>
+            <Plus size={15} /> New
+          </button>
+        </div>
       </header>
 
       {loading ? (
@@ -348,10 +367,13 @@ export default function App() {
           <ChatPanel
             messages={messages}
             live={live}
+            liveFlow={live ? flow : null}
             versions={versions}
             error={error}
             hasJobDescription={!!state?.conversation.context.job_description}
             presets={presets}
+            selection={selection}
+            onClearSelection={() => setSelection([])}
             onSend={send}
             onViewFlow={(f) => {
               setFlow(f);
@@ -367,6 +389,8 @@ export default function App() {
             onTab={setTab}
             flow={flow}
             flowLive={!!live}
+            replyChars={live?.reply.length ?? 0}
+            onSelectText={(lines) => setSelection(lines)}
             onRestore={(vid) => versionAction(() => api.restore(conversationId, vid))}
           />
         </main>

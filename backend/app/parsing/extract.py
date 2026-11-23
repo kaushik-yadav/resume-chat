@@ -21,6 +21,10 @@ SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 _BULLETS = "•●○◦▪▫■□►▸‣⁃∙·➢➤✓✔-–—*"
 _BULLET_LINE = re.compile(rf"^\s*[{re.escape(_BULLETS)}]\s+")
 _LIGATURES = {"ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl"}
+# Symbol / Wingdings bullet glyphs as extracted from Word-made PDFs: •, ▪, ❖, ➢, ✓, ●, □, ➔.
+_SYMBOL_BULLETS = "\x7f"
+_SYMBOL_BULLET_LINE = re.compile(rf"(?m)^[ \t]*[{_SYMBOL_BULLETS}][ \t]*")
+_PRIVATE_GLYPH = re.compile("[\x7f-]")
 
 
 class ResumeParseError(ValueError):
@@ -60,6 +64,14 @@ def _extract_pdf(data: bytes) -> str:
                 reader.decrypt("")
             except Exception as exc:  # pragma: no cover - depends on file
                 raise ResumeParseError("This PDF is password protected.") from exc
+        producer = str((reader.metadata or {}).get("/Producer", ""))
+        if "edited in place by Resume Chat" in producer:
+            # Our original-layout export draws replaced lines after the rest of the page, so
+            # content-stream order (pypdf) would list them last: read in position order instead.
+            import pymupdf
+
+            with pymupdf.open(stream=data, filetype="pdf") as doc:
+                return "\n".join(page.get_text(sort=True) for page in doc)
         return "\n".join((page.extract_text() or "") for page in reader.pages)
     except PdfReadError as exc:
         raise ResumeParseError(f"Could not read PDF: {exc}") from exc
@@ -109,6 +121,11 @@ def normalize_text(text: str) -> str:
     """Clean extraction artifacts while preserving line structure."""
     for lig, repl in _LIGATURES.items():
         text = text.replace(lig, repl)
+    # Word's Symbol/Wingdings bullets come out of PDFs as private-use code points (U+F0B7...)
+    # or as DEL (U+007F). At the start of a line they are bullets; anywhere else they are icon
+    # glyphs (Font Awesome phone/mail icons) with no readable text, so they are dropped.
+    text = _SYMBOL_BULLET_LINE.sub("• ", text)
+    text = _PRIVATE_GLYPH.sub(" ", text)
     text = unicodedata.normalize("NFKC", text)
     text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\t", " ")
     # Re-join words hyphenated across line breaks ("develop-\nment").

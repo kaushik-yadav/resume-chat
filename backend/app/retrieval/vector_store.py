@@ -16,6 +16,7 @@ import hashlib
 import logging
 import re
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -90,10 +91,13 @@ class VectorStore:
             else chromadb.EphemeralClient(settings=settings)
         )
         self.embedder = embedder
+        # In-memory Chroma clients share one process-wide store, so each in-memory instance
+        # (tests, offline mode) gets its own namespace instead of seeing other instances' data.
+        self._namespace = "" if path else f"m{uuid.uuid4().hex[:10]}_"
 
     def _collection(self, name: str):
         return self._client.get_or_create_collection(
-            f"{name}__{self.embedder.name}", metadata={"hnsw:space": "cosine"}
+            f"{self._namespace}{name}__{self.embedder.name}", metadata={"hnsw:space": "cosine"}
         )
 
     def _add(self, name: str, items: list[tuple[str, dict]], ids: list[str]) -> None:

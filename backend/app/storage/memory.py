@@ -14,6 +14,7 @@ class MemoryRepository(Repository):
         self._conversations: dict[str, Conversation] = {}
         self._messages: dict[str, list[ChatMessage]] = {}
         self._versions: dict[str, dict[str, ResumeVersion]] = {}
+        self._originals: dict[tuple[str, str], tuple[str, bytes]] = {}
 
     def save_conversation(self, conversation: Conversation) -> Conversation:
         with self._lock:
@@ -70,6 +71,15 @@ class MemoryRepository(Repository):
             self._require(conversation_id)
             versions = sorted(self._versions[conversation_id].values(), key=lambda v: v.number)
             return [v.model_copy(deep=True) for v in versions]
+
+    def save_original(self, conversation_id: str, upload_id: str, filename: str, data: bytes) -> None:
+        with self._lock:
+            self._require(conversation_id)
+            self._originals[(conversation_id, upload_id)] = (filename, bytes(data))
+
+    def get_original(self, conversation_id: str, upload_id: str) -> tuple[str, bytes] | None:
+        with self._lock:
+            return self._originals.get((conversation_id, upload_id))
 
     def _require(self, conversation_id: str) -> None:
         if conversation_id not in self._conversations:

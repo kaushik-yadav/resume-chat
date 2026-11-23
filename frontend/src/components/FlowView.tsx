@@ -12,7 +12,9 @@ import {
   XCircle,
 } from "lucide-react";
 import type { Flow, FlowNode, FlowStatus } from "../types";
+import { flowTokens, nodeTokens, runningEstimate, useLiveTokens, useServerClock } from "../tokens";
 import { AGENT_ICONS } from "./AgentCard";
+import TokenMeter from "./TokenMeter";
 
 const KIND_ICONS = {
   trigger: MessageSquare,
@@ -83,17 +85,15 @@ function useElapsed(flow: Flow | null, live: boolean) {
 
 function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<typeof useElapsed> }) {
   const d = node.detail;
-  const tokens = node.llm.reduce((sum, c) => sum + c.input_tokens + c.output_tokens, 0);
+  const tokens = nodeTokens(node);
   return (
     <div className="flow-details">
       <div className="fd-head">
         <StatusIcon status={node.status} size={17} />
         <b>{node.label}</b>
-        <span className="sub">
-          {node.status}
-          {elapsed(node) != null && ` · ${fmt(elapsed(node))}`}
-          {node.start_ms != null && ` · started at +${fmt(node.start_ms)}`}
-        </span>
+        <span className={`fd-status s-${node.status}`}>{node.status}</span>
+        {elapsed(node) != null && <span className="sub">{fmt(elapsed(node))}</span>}
+        {node.start_ms != null && <span className="sub">started at +{fmt(node.start_ms)}</span>}
       </div>
 
       <div className="fd-grid">
@@ -116,6 +116,13 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
           {node.kind === "agent" && (
             <>
               <p>{d.instruction}</p>
+              {d.target_lines?.length > 0 && (
+                <ul className="fd-lines">
+                  {d.target_lines.map((l: string) => (
+                    <li key={l}>{l.replace(/^- /, "")}</li>
+                  ))}
+                </ul>
+              )}
               {d.target_sections?.length > 0 && (
                 <div className="kv">
                   {d.target_sections.map((s: string) => <span key={s} className="chip">{s}</span>)}
@@ -184,7 +191,12 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
 
       {node.llm.length > 0 && (
         <section>
-          <h5>LLM calls · {tokens.toLocaleString()} tokens · {usd(node.cost_usd)}</h5>
+          <h5>
+            LLM and embedding calls{" "}
+            <span className="fd-total">
+              {tokens.toLocaleString()} tokens, {usd(node.cost_usd) || "$0"}
+            </span>
+          </h5>
           <table className="fd-llm">
             <tbody>
               {node.llm.map((c, i) => (
@@ -199,7 +211,9 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
                   </td>
                   <td className="sub">{c.model}</td>
                   <td>{fmt(c.ms)}</td>
-                  <td className="sub">{c.input_tokens.toLocaleString()} in · {c.output_tokens.toLocaleString()} out</td>
+                  <td className="sub">
+                    {c.input_tokens.toLocaleString()} in / {c.output_tokens.toLocaleString()} out
+                  </td>
                   <td title={c.estimated ? "Upper bound: estimated tokens of an incomplete call" : undefined}>
                     {c.estimated ? "≤" : ""}
                     {usd(c.cost_usd)}
@@ -214,11 +228,21 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
   );
 }
 
-/** n8n-style execution view of one chat turn: nodes, edges, live status and details. */
-export default function FlowView({ flow, live }: { flow: Flow | null; live: boolean }) {
+/** n8n-style execution view of one chat turn: nodes, edges, live status, tokens and details. */
+export default function FlowView({
+  flow,
+  live,
+  replyChars = 0,
+}: {
+  flow: Flow | null;
+  live: boolean;
+  replyChars?: number;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const elapsed = useElapsed(flow, live);
+  const serverNow = useServerClock(flow, live);
+  const liveTokens = useLiveTokens(flow, replyChars, live);
 
   const running = flow?.nodes.find((n) => n.status === "running") ?? null;
   const active = useMemo(() => {
@@ -247,29 +271,60 @@ export default function FlowView({ flow, live }: { flow: Flow | null; live: bool
     return (
       <div className="empty">
         <Workflow size={28} />
-        <p>Send a message to watch the router and agents execute here, step by step.</p>
+        <p>Send a message to watch the router and agents work on it, step by step.</p>
       </div>
     );
   }
 
-  const llmCalls = flow.nodes.reduce((sum, n) => sum + n.llm.length, 0);
+  const llmCount = (node: FlowNode) => node.llm.filter((c) => c.name !== "embed").length;
+  const llmCalls = flow.nodes.reduce((sum, n) => sum + llmCount(n), 0);
+  const total = live ? elapsed({ status: "running", start_ms: 0, end_ms: null }) : flow.total_ms;
+  const tokensOf = (node: FlowNode) =>
+    node.status === "running" && node.start_ms != null
+      ? runningEstimate(node, Math.max(0, serverNow() - node.start_ms), replyChars)
+      : nodeTokens(node);
+  const cancelledNote = flow.incomplete_cost_usd
+    ? `Plus up to ${usd(flow.incomplete_cost_usd)} for cancelled calls`
+    : undefined;
+
   return (
     <div className="flow">
-      <div className="flow-bar">
-        <b>Execution</b>
-        <span className="sub">
-          {live ? "running" : "finished"} · {fmt(live ? elapsed({ status: "running", start_ms: 0, end_ms: null }) : flow.total_ms)} ·{" "}
-          {flow.nodes.length} nodes · {llmCalls} LLM call{llmCalls === 1 ? "" : "s"}
-          {flow.cost_usd != null && ` · ${usd(flow.cost_usd)}`}
-          {!!flow.incomplete_cost_usd && ` (+ ≤${usd(flow.incomplete_cost_usd)} cancelled)`}
-        </span>
-      </div>
+      <header className="flow-bar">
+        <h3>{live ? "Running" : "Finished"}</h3>
+        <dl className="flow-stats">
+          <div>
+            <dt>Time</dt>
+            <dd>{fmt(total)}</dd>
+          </div>
+          <div>
+            <dt>Steps</dt>
+            <dd>{flow.nodes.length}</dd>
+          </div>
+          <div>
+            <dt>LLM calls</dt>
+            <dd>{llmCalls}</dd>
+          </div>
+          <div>
+            <dt>Tokens</dt>
+            <dd>
+              <TokenMeter value={live ? liveTokens : flowTokens(flow)} live={live} compact />
+            </dd>
+          </div>
+          <div>
+            <dt>Cost</dt>
+            <dd title={cancelledNote}>{usd(flow.cost_usd) || "$0"}</dd>
+          </div>
+        </dl>
+      </header>
       <div className="flow-canvas" ref={canvas}>
         <div className="flow-track">
           {flow.nodes.map((node, i) => {
             const Icon = nodeIcon(node);
             const next = flow.nodes[i + 1];
             const t = elapsed(node);
+            const tokens = tokensOf(node);
+            const showTokens =
+              (tokens > 0 || node.status === "running") && node.kind !== "trigger" && node.kind !== "version";
             return (
               <div key={node.id} className="flow-cell">
                 <button
@@ -279,19 +334,26 @@ export default function FlowView({ flow, live }: { flow: Flow | null; live: bool
                   aria-label={`${node.label}: ${node.status}`}
                 >
                   <div className="fn-top">
-                    <span className="fn-icon"><Icon size={16} /></span>
+                    <span className="fn-icon">
+                      <Icon size={16} />
+                    </span>
                     <StatusIcon status={node.status} />
                   </div>
                   <div className="fn-label">{node.label}</div>
                   <div className="fn-meta">
-                    {t != null ? fmt(t) : node.status}
-                    {node.llm.length > 0 && ` · ${node.llm.length} LLM`}
-                    {node.kind === "router" &&
-                      node.detail.decided_by &&
-                      node.detail.decided_by !== "llm" &&
-                      ` · ${node.detail.decided_by}`}
-                    {node.steps.length > 0 && ` · ${node.steps.length} steps`}
+                    <span>{t != null ? fmt(t) : node.status}</span>
+                    {llmCount(node) > 0 && <span>{llmCount(node)} LLM</span>}
+                    {node.kind === "router" && node.detail.decided_by && node.detail.decided_by !== "llm" && (
+                      <span>{node.detail.decided_by}</span>
+                    )}
+                    {node.steps.length > 0 && <span>{node.steps.length} steps</span>}
                   </div>
+                  {showTokens && (
+                    <div className={`fn-tokens${node.status === "running" ? " is-live" : ""}`}>
+                      {node.status === "running" ? "≈ " : ""}
+                      {tokens.toLocaleString()} tokens
+                    </div>
+                  )}
                   {node.status === "running" && node.steps.length > 0 && (
                     <div className="fn-step">{node.steps[node.steps.length - 1].label}…</div>
                   )}

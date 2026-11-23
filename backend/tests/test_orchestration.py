@@ -212,6 +212,15 @@ def test_http_api_end_to_end(sample_docx):
         assert "Alex Morgan" in Document(io.BytesIO(docx.content)).paragraphs[0].text
         md = client.get(f"/api/conversations/{cid}/export", params={"format": "md"})
         assert "## Experience" in md.text
+        pdf = client.get(f"/api/conversations/{cid}/export", params={"format": "pdf"})
+        assert pdf.status_code == 200 and pdf.headers["content-type"] == "application/pdf"
+        assert pdf.content.startswith(b"%PDF") and "cv_v3.pdf" in pdf.headers["content-disposition"]
+        # Any version can be downloaded, not just the current one.
+        old = client.get(
+            f"/api/conversations/{cid}/export",
+            params={"format": "pdf", "version_id": versions[0]["id"]},
+        )
+        assert old.status_code == 200 and "cv_v1.pdf" in old.headers["content-disposition"]
 
         state = client.get(f"/api/conversations/{cid}").json()
         assert len(state["messages"]) == 3
@@ -304,3 +313,22 @@ async def test_flow_shapes_for_clarify_undo_and_question(svc_conv):
 
     question = final_flow(await turn(svc, cid, "What are my strengths?"))
     assert [n["id"] for n in question["nodes"]] == ["trigger", "router", "respond"]
+
+
+def test_new_versions_are_prerendered_as_pdf(sample_docx):
+    """The first "Download PDF" of a new version is served from cache, not rendered on click."""
+    import time
+
+    from app.services import export
+
+    with TestClient(create_app(settings(), overrides())) as client:
+        cid = client.post("/api/conversations").json()["id"]
+        state = client.post(
+            f"/api/conversations/{cid}/resume",
+            files={"file": ("cv.docx", sample_docx, "application/octet-stream")},
+        ).json()
+        key = (cid, state["current_version"]["id"], "pdf", "original")
+        deadline = time.monotonic() + 5
+        while key not in export._CACHE and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert key in export._CACHE

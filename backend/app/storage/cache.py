@@ -40,6 +40,8 @@ class CachedRepository(Repository):
         self._lock = threading.RLock()
         self._entries: OrderedDict[str, _Entry] = OrderedDict()
         self.hits = self.misses = 0
+        # Uploaded files (immutable), a few at a time: they are only read when exporting.
+        self._originals: OrderedDict[tuple[str, str], tuple[str, bytes]] = OrderedDict()
 
     # --------------------------------------------------------------- internals
     def _entry(self, conversation_id: str) -> _Entry:
@@ -166,6 +168,25 @@ class CachedRepository(Repository):
             entry.versions.update({v.id: v.model_copy(deep=True) for v in versions})
             entry.versions_complete = True
         return versions
+
+    def save_original(self, conversation_id: str, upload_id: str, filename: str, data: bytes) -> None:
+        self.inner.save_original(conversation_id, upload_id, filename, data)
+        with self._lock:
+            self._originals[(conversation_id, upload_id)] = (filename, data)
+            while len(self._originals) > 16:
+                self._originals.popitem(last=False)
+
+    def get_original(self, conversation_id: str, upload_id: str) -> tuple[str, bytes] | None:
+        key = (conversation_id, upload_id)
+        with self._lock:
+            if key in self._originals:
+                self._originals.move_to_end(key)
+                return self._originals[key]
+        found = self.inner.get_original(conversation_id, upload_id)
+        if found is not None:
+            with self._lock:
+                self._originals[key] = found
+        return found
 
     def latest_version_number(self, conversation_id: str) -> int:
         with self._lock:
