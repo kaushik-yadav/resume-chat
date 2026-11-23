@@ -7,6 +7,7 @@ into a clarifying question instead of a low-quality guess.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -154,9 +155,27 @@ def apply_memory_updates(
     return memory
 
 
+FAST_COMMANDS = re.compile(
+    r"^\s*(?P<op>undo|redo|revert)(?: (?:that|it|this|the last change|last change))?\s*[.!]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def fast_path(message: str) -> RoutingDecision | None:
+    """Bare version commands need no LLM call (saves a round-trip on every undo/redo)."""
+    m = FAST_COMMANDS.match(message)
+    if not m:
+        return None
+    op = "redo" if m.group("op").lower() == "redo" else "undo"
+    return RoutingDecision(intent=op, reasoning=f"Recognized a direct '{op}' command.")
+
+
 async def route(
     llm: LLM, message: str, memory: ConversationContext, resume: Resume, history: str
 ) -> tuple[RoutingDecision, ConversationContext]:
+    fast = fast_path(message)
+    if fast is not None:
+        return fast, memory
     decision = await llm.structured(
         RoutingDecision,
         SYSTEM,

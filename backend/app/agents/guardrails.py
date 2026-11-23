@@ -31,8 +31,11 @@ DATE_STYLES = {
 }
 
 
+NOT_METRICS = re.compile(r"(?<!\d)24/7(?!\d)")  # a phrase, not a metric
+
+
 def _numbers(text: str) -> Counter[str]:
-    text = PLACEHOLDER.sub(" ", text)
+    text = NOT_METRICS.sub(" ", PLACEHOLDER.sub(" ", text))
     found = (m.group(0).strip().rstrip(".,") for m in NUMBER.finditer(text))
     return Counter(n for n in found if n)
 
