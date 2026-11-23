@@ -40,7 +40,9 @@ class RoutingDecision(BaseModel):
     steps: list[PlanStep] = Field(default_factory=list, description="Ordered agent steps for edit")
     clarification_question: str = Field(default="", description="Only for intent=clarify")
     target_company: str = Field(default="", description="Company named in THIS message, else ''")
-    target_role: str = Field(default="", description="Job title/role named in THIS message, else ''")
+    target_role: str = Field(
+        default="", description="Job title/role named in THIS message, else ''"
+    )
     target_locale: str = Field(
         default="", description="BCP-47 locale for a requested translation (e.g. es-MX, de-DE)"
     )

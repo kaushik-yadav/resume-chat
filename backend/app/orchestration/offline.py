@@ -22,8 +22,14 @@ def _user_message(user: str) -> str:
 def routing(system: str, user: str) -> dict:
     msg = _user_message(user)
     low = msg.lower()
-    is_jd = len(msg.split()) >= 40 and any(w in low for w in ("requirements", "responsibilities", "qualifications"))
-    base = {"reasoning": "Offline keyword routing.", "steps": [], "message_contains_job_description": is_jd}
+    is_jd = len(msg.split()) >= 40 and any(
+        w in low for w in ("requirements", "responsibilities", "qualifications")
+    )
+    base = {
+        "reasoning": "Offline keyword routing.",
+        "steps": [],
+        "message_contains_job_description": is_jd,
+    }
     if re.match(r"^\s*(undo|revert|go back)", low):
         return {**base, "intent": "undo"}
     if re.match(r"^\s*(redo|put it back)", low):
@@ -34,23 +40,46 @@ def routing(system: str, user: str) -> dict:
     sections = [s for s in SECTION_WORDS if s in low and f"[{s}]" in user]
     steps, company, locale, role = [], "", "", ""
     if is_jd or "job description" in low or "this job" in low:
-        steps.append({"agent": "jd_matching", "instruction": msg[:200], "target_sections": sections})
+        steps.append(
+            {"agent": "jd_matching", "instruction": msg[:200], "target_sections": sections}
+        )
     if "translate" in low or any(k in low for k in ("spanish", "german", "french", "japanese")):
         locale = next((v for k, v in LOCALES.items() if k in low), "")
     m = COMPANY_RX.search(msg)
-    if "optimi" in low or "tailor" in low:
-        if m and not any(k in m.group(1).lower() for k in LOCALES):
-            company = m.group(1)
-            steps.append({"agent": "company_research", "instruction": f"Optimize for {company}", "target_sections": sections})
+    wants_company = "optimi" in low or "tailor" in low
+    if wants_company and m and not any(k in m.group(1).lower() for k in LOCALES):
+        company = m.group(1)
+        steps.append(
+            {
+                "agent": "company_research",
+                "instruction": f"Optimize for {company}",
+                "target_sections": sections,
+            }
+        )
     role_m = re.search(r"for an? ([a-z ]+?) role", low)
     if role_m:
         role = role_m.group(1).title()
     if any(w in low for w in ("improve", "stronger", "enhance", "relevant", "rewrite", "punch")):
-        steps.append({"agent": "section_enhancement", "instruction": msg[:200], "target_sections": sections})
+        steps.append(
+            {"agent": "section_enhancement", "instruction": msg[:200], "target_sections": sections}
+        )
     if locale:
-        steps.append({"agent": "translation", "instruction": f"Translate for {locale}", "target_sections": []})
+        steps.append(
+            {
+                "agent": "translation",
+                "instruction": f"Translate for {locale}",
+                "target_sections": [],
+            }
+        )
     if steps:
-        return {**base, "intent": "edit", "steps": steps, "target_company": company, "target_locale": locale, "target_role": role}
+        return {
+            **base,
+            "intent": "edit",
+            "steps": steps,
+            "target_company": company,
+            "target_locale": locale,
+            "target_role": role,
+        }
     return {**base, "intent": "question"}
 
 
