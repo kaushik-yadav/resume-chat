@@ -20,6 +20,7 @@ Section Enhancement.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent architecture, turn lifecycle, context-engineering choices, tool/API choices, measured latency |
 | [docs/RESPONSIBLE_AI.md](docs/RESPONSIBLE_AI.md) | Responsible Use of AI statement, and how prompt traces are provided |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | A 5-minute walkthrough script for the demo video |
+| [docs/PROMPT_LOG.md](docs/PROMPT_LOG.md) | Every instruction I gave the AI agent (verbatim, as a structured brief, and what was delivered), plus *Where my calls were verified*: my diagnoses and requirements next to the measurements that confirmed them |
 
 ---
 
@@ -28,7 +29,7 @@ Section Enhancement.
 | Requirement | Where |
 |---|---|
 | Chat interface with PDF/DOCX upload and parsing | `frontend/`, `backend/app/parsing/` |
-| Conversation router (intent → agents) | `backend/app/orchestration/router.py` |
+| Conversation router (intent → agents) | Routing cascade: suggested action → rules → cache → fast embedding classifier → lite LLM (`backend/app/orchestration/`) |
 | Context management (history + resume state across turns) | `backend/app/services/context.py`, conversation memory slots |
 | Agent coordination for multi-step requests | LangGraph workflow, `backend/app/orchestration/graph.py` |
 | Resume version tracking | `backend/app/services/versioning.py` (Firestore) |
@@ -39,7 +40,9 @@ Section Enhancement.
 | LangChain / LangGraph orchestration | LangChain chat models, structured output and Tavily tool; LangGraph `StateGraph` |
 | FastAPI backend with a chat API | `backend/app/api/` (REST + SSE) |
 | Firebase for conversation history and versions | Firestore (`backend/app/storage/firestore.py`), emulator supported |
-| LLM / vector DB / other services (own choice) | Gemini 3.8 Flash, Chroma with Gemini embeddings, Tavily (DuckDuckGo fallback) |
+| LLM / vector DB / other services (own choice) | Gemini (3.5 Flash-Lite and 3.8 Flash, per plan), Chroma with Gemini embeddings, Tavily (DuckDuckGo fallback) |
+| **Extra:** SaaS plans | Free / Pro / Premium select the model per role; every reply shows its real cost (`backend/app/plans.py`) |
+| **Extra:** robustness | Idempotent chat (client message ids), routing cache for exact repeats, presets skip classification |
 
 ---
 
@@ -71,6 +74,7 @@ candidate). Paste `samples/job_description_data_scientist.txt` to try JD matchin
 | Setting | Effect |
 |---|---|
 | `LLM_PROVIDER=fake` | Deterministic offline responders: the whole pipeline runs with no API key |
+| `DEFAULT_PLAN=free` | Plan for new conversations (`free`, `pro` or `premium`); switchable per conversation in the UI |
 | `STORAGE_BACKEND=memory` | In-process storage instead of Firestore |
 | `EMBEDDING_PROVIDER=hash` | Offline lexical embeddings instead of Gemini embeddings |
 | `SEARCH_PROVIDER=duckduckgo` | Key-less web search (or `none`) |
@@ -98,9 +102,12 @@ candidate). Paste `samples/job_description_data_scientist.txt` to try JD matchin
 
 ```bash
 cd backend
-uv run pytest -q                                   # 71 tests, offline (fake LLM, memory store)
+uv run pytest -q                                   # 115 tests, offline (fake LLM, memory store)
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 uv run pytest tests/test_firestore.py   # emulator round trip
-uv run ruff check app tests
+uv run ruff check app tests evals
+uv run python evals/routing_eval.py --calibrate    # live: tune classifier thresholds on the calibration split only
+uv run python evals/routing_eval.py --repeats 3    # live: held-out accuracy, median/p95 latency, cost (cascade vs LLM-only)
+uv run python evals/agent_benchmark.py --repeats 3 # live: per-agent median/p95 latency, cost, warnings per model
 cd ../frontend && npm run build                    # type-check + production build
 ```
 
@@ -117,6 +124,7 @@ and the HTTP API, including SSE streaming and DOCX export.
 backend/app
 ├── main.py                 App factory; wires repository, LLM, vector store, web search, agents
 ├── config.py               All settings (env / backend/.env)
+├── plans.py                Free / Pro / Premium: model per role, prices, cost per call
 ├── api/
 │   ├── conversations.py    REST + SSE: conversations, upload, chat stream, versions, undo/redo, compare, export
 │   ├── resumes.py          Stateless parse endpoint
@@ -128,7 +136,10 @@ backend/app
 │   ├── extract.py          PDF (pypdf) / DOCX (python-docx, incl. tables) text extraction + normalization
 │   └── sectionizer.py      Deterministic heading detection → typed sections
 ├── orchestration/
-│   ├── router.py           LLM intent router → validated plan (+ undo/redo fast path)
+│   ├── router.py           Routing cascade + LLM router → validated plan
+│   ├── classifier.py       Fast intent classifier (embedding kNN + slot extraction, abstains when unsure)
+│   ├── presets.py          Suggested actions with predefined plans (no classification)
+│   ├── route_cache.py      Exact-repeat routing cache (context-aware key)
 │   ├── graph.py            LangGraph turn workflow: route → agents → synthesize | answer | clarify
 │   └── offline.py          Offline router/reply responders
 ├── agents/
@@ -153,7 +164,8 @@ backend/app
 │   ├── versioning.py       Commit / undo / redo / restore / compare
 │   ├── diff.py             Section-level diffs
 │   └── export.py           DOCX / Markdown export
-├── storage/                Repository interface; Firestore (gRPC or REST) and in-memory backends
+├── storage/                Repository interface; Firestore (gRPC or REST), in-memory backend,
+│                           write-through cache (cache.py) for instant undo/redo
 └── tools/web_search.py     Tavily (LangChain) with DuckDuckGo fallback, concurrent + de-duplicated
 
 frontend/src
@@ -177,5 +189,7 @@ frontend/src
 | POST | `/api/conversations/{id}/undo` · `/redo` · `/versions/{vid}/restore` | Version control |
 | GET | `/api/conversations/{id}/compare?from=&to=` | Section diffs between two versions |
 | GET | `/api/conversations/{id}/export?format=docx\|md` | Download |
+| PATCH | `/api/conversations/{id}` | Change the conversation's plan (`{"plan": "free"}`) |
+| GET | `/api/plans` · `/api/presets` | Plan catalogue (models, prices) and suggested actions |
 | POST | `/api/resumes/parse` | Stateless parse (debugging) |
 

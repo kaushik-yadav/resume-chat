@@ -1,31 +1,30 @@
 import { useState, type KeyboardEvent } from "react";
-import { Paperclip, SendHorizontal, X } from "lucide-react";
-
-const SUGGESTIONS = [
-  "Optimize my resume for Google",
-  "Translate this to Spanish for the Mexican market",
-  "Update my experience section to better match this job description",
-  "Make my skills section more relevant for a data scientist role",
-];
+import { Paperclip, SendHorizontal, X, Zap } from "lucide-react";
+import type { Preset } from "../types";
 
 interface Props {
   disabled: boolean;
   hasJobDescription: boolean;
-  onSend: (message: string, jobDescription: string | null) => void;
+  presets: Preset[];
+  onSend: (message: string, jobDescription: string | null, preset: string | null) => void;
 }
 
-export default function Composer({ disabled, hasJobDescription, onSend }: Props) {
+export default function Composer({ disabled, hasJobDescription, presets, onSend }: Props) {
   const [text, setText] = useState("");
   const [jd, setJd] = useState("");
   const [showJd, setShowJd] = useState(false);
+  // Chip that opened the JD box; dropped if the user rewrites the message.
+  const [pending, setPending] = useState<Preset | null>(null);
 
-  function send(message = text) {
+  function send(message = text, preset: Preset | null = pending) {
     const trimmed = message.trim();
     if (!trimmed || disabled) return;
-    onSend(trimmed, showJd && jd.trim() ? jd.trim() : null);
+    const presetId = preset && preset.label === trimmed ? preset.id : null;
+    onSend(trimmed, showJd && jd.trim() ? jd.trim() : null, presetId);
     setText("");
     setJd("");
     setShowJd(false);
+    setPending(null);
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -38,18 +37,20 @@ export default function Composer({ disabled, hasJobDescription, onSend }: Props)
   return (
     <div className="composer">
       <div className="suggestions">
-        {SUGGESTIONS.map((s) => (
+        {presets.map((p) => (
           <button
-            key={s}
+            key={p.id}
             disabled={disabled}
+            title="Suggested action: runs instantly, no intent classification needed"
             onClick={() => {
-              if (s.includes("job description") && !hasJobDescription) {
-                setText(s);
+              if (p.needs_job_description && !hasJobDescription) {
+                setText(p.label);
+                setPending(p);
                 setShowJd(true);
-              } else send(s);
+              } else send(p.label, p);
             }}
           >
-            {s}
+            <Zap size={11} /> {p.label}
           </button>
         ))}
       </div>

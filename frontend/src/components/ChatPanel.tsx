@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage, Flow, LiveTurn, VersionSummary } from "../types";
+import type { ChatMessage, Flow, LiveTurn, Preset, VersionSummary } from "../types";
 import Composer from "./Composer";
 import LiveActivity from "./LiveActivity";
 import MessageBubble from "./MessageBubble";
@@ -10,7 +10,8 @@ interface Props {
   versions: VersionSummary[];
   error: string | null;
   hasJobDescription: boolean;
-  onSend: (message: string, jobDescription: string | null) => void;
+  presets: Preset[];
+  onSend: (message: string, jobDescription: string | null, preset: string | null) => void;
   onViewFlow: (flow: Flow) => void;
 }
 
@@ -20,6 +21,7 @@ export default function ChatPanel({
   versions,
   error,
   hasJobDescription,
+  presets,
   onSend,
   onViewFlow,
 }: Props) {
@@ -50,7 +52,12 @@ export default function ChatPanel({
             <div className="error-banner">{error}</div>
           </div>
         )}
-        <Composer disabled={!!live} hasJobDescription={hasJobDescription} onSend={onSend} />
+        <Composer
+          disabled={!!live}
+          hasJobDescription={hasJobDescription}
+          presets={presets}
+          onSend={onSend}
+        />
       </div>
     </section>
   );

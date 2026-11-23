@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { Download, Plus, Redo2, Undo2 } from "lucide-react";
-import { api, streamChat } from "./api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, Loader2, Plus, Redo2, Undo2 } from "lucide-react";
+import { ApiError, api, streamChat } from "./api";
 import ChatPanel from "./components/ChatPanel";
 import ResumePanel, { type Tab } from "./components/ResumePanel";
+import PlanPicker from "./components/PlanPicker";
 import UploadPane from "./components/UploadPane";
 import type {
   ChatMessage,
   Flow,
+  Plan,
+  Preset,
   ConversationListItem,
   ConversationState,
   LiveTurn,
@@ -14,23 +17,45 @@ import type {
   VersionSummary,
 } from "./types";
 
-const STORAGE_KEY = "resumeChat.conversationId";
+// Session handling:
+// - sessionStorage holds the conversation open in *this tab*: a refresh restores it.
+// - localStorage holds the last conversation across visits: offered as "Continue", never
+//   opened automatically (a new visit starts at the upload screen).
+const SESSION_KEY = "resumeChat.session";
+const LAST_KEY = "resumeChat.last";
 
-function remember(id: string | null) {
+function store(kind: "session" | "local"): Storage | null {
   try {
-    if (id) localStorage.setItem(STORAGE_KEY, id);
-    else localStorage.removeItem(STORAGE_KEY);
+    return kind === "session" ? window.sessionStorage : window.localStorage;
   } catch {
-    /* storage unavailable (private mode) - the app still works */
+    return null; // storage unavailable (private mode) - the app still works
   }
 }
 
-function recall(): string | null {
+function remember(id: string | null) {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    if (id) {
+      store("session")?.setItem(SESSION_KEY, id);
+      store("local")?.setItem(LAST_KEY, id);
+    } else {
+      store("session")?.removeItem(SESSION_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function recall(kind: "session" | "local"): string | null {
+  try {
+    return store(kind)?.getItem(kind === "session" ? SESSION_KEY : LAST_KEY) ?? null;
   } catch {
     return null;
   }
+}
+
+/** Append a message unless it is already shown (stream retries replay events). */
+function addOnce(list: ChatMessage[], message: ChatMessage): ChatMessage[] {
+  return list.some((m) => m.id === message.id) ? list : [...list, message];
 }
 
 const emptyTurn = (): LiveTurn => ({
@@ -43,7 +68,10 @@ const emptyTurn = (): LiveTurn => ({
 });
 
 export default function App() {
-  const [conversationId, setConversationId] = useState<string | null>(recall);
+  const [conversationId, setConversationId] = useState<string | null>(() => recall("session"));
+  // True while a conversation is being fetched: shows a restoring state, never the upload screen.
+  const [loading, setLoading] = useState<boolean>(() => !!recall("session"));
+  const loadedId = useRef<string | null>(null);
   const [state, setState] = useState<ConversationState | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [versions, setVersions] = useState<VersionSummary[]>([]);
@@ -53,6 +81,8 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [flow, setFlow] = useState<Flow | null>(null);
   const [tab, setTab] = useState<Tab>("resume");
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
 
   const refreshVersions = useCallback(async (id: string) => {
     setVersions(await api.listVersions(id));
@@ -62,27 +92,64 @@ export default function App() {
     api.listConversations().then(setRecent).catch(() => setRecent([]));
   }, []);
 
-  // Load the remembered conversation (if any) on start-up.
+  // Product catalogue: plans (models per tier) and one-click suggested actions.
+  useEffect(() => {
+    api.plans().then((r) => setPlans(r.plans)).catch(() => setPlans([]));
+    api.presets().then(setPresets).catch(() => setPresets([]));
+  }, []);
+
+  // Open the selected conversation: on refresh (this tab's session) or from "Recent".
   useEffect(() => {
     loadRecent();
-    if (!conversationId) return;
-    api
-      .getConversation(conversationId)
-      .then((s) => {
+    if (!conversationId || loadedId.current === conversationId) {
+      setLoading(false); // nothing to open, or already in memory (e.g. right after an upload)
+      return;
+    }
+    let cancelled = false; // a later selection wins over a slower, earlier response
+    setLoading(true);
+    // Conversation state and version list are independent: fetch them in parallel.
+    Promise.all([api.getConversation(conversationId), api.listVersions(conversationId)])
+      .then(([s, list]) => {
+        if (cancelled) return;
+        loadedId.current = conversationId;
         setState(s);
         setMessages(s.messages ?? []);
-        return refreshVersions(conversationId);
+        setVersions(list);
       })
       .catch(() => {
+        if (cancelled) return;
         remember(null);
+        loadedId.current = null;
         setConversationId(null);
+        setState(null);
+        setError("That conversation could not be restored. Upload a resume to start again.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [conversationId, refreshVersions, loadRecent]);
+
+  function openConversation(id: string) {
+    if (id === conversationId) return;
+    remember(id);
+    loadedId.current = null;
+    setState(null);
+    setMessages([]);
+    setVersions([]);
+    setFlow(null);
+    setError(null);
+    setTab("resume");
+    setConversationId(id);
+  }
 
   async function upload(file: File) {
     const { id } = await api.createConversation();
     const result = await api.uploadResume(id, file);
     remember(id);
+    loadedId.current = id; // already have its state: no second fetch
     setConversationId(id);
     setState(result);
     setMessages([result.message]);
@@ -93,6 +160,8 @@ export default function App() {
 
   function newConversation() {
     remember(null);
+    loadedId.current = null;
+    setLoading(false);
     setConversationId(null);
     setState(null);
     setMessages([]);
@@ -109,7 +178,7 @@ export default function App() {
   function handleEvent(event: StreamEvent) {
     switch (event.type) {
       case "user_message":
-        setMessages((m) => [...m, event.message]);
+        setMessages((m) => addOnce(m, event.message));
         break;
       case "status":
         setLive((t) => t && { ...t, status: event.message });
@@ -135,7 +204,7 @@ export default function App() {
         setState((s) => s && { ...s, current_version: event.version, can_undo: event.can_undo, can_redo: event.can_redo });
         break;
       case "done":
-        setMessages((m) => [...m, event.message]);
+        setMessages((m) => addOnce(m, event.message));
         applyState(event);
         break;
       case "flow": {
@@ -149,14 +218,24 @@ export default function App() {
     }
   }
 
-  async function send(message: string, jobDescription: string | null) {
+  async function send(message: string, jobDescription: string | null, preset: string | null) {
     if (!conversationId) return;
     setError(null);
     setLive(emptyTurn());
     setFlow(null);
     setTab("flow"); // watch the agents execute
+    // One idempotency key per message: if the connection drops, the retry reuses it and the
+    // server replays the stored answer instead of running the agents a second time.
+    const clientMessageId = crypto.randomUUID();
+    const options = { jobDescription, clientMessageId, preset };
     try {
-      await streamChat(conversationId, message, jobDescription, handleEvent);
+      try {
+        await streamChat(conversationId, message, options, handleEvent);
+      } catch (e) {
+        if (e instanceof ApiError) throw e; // the server answered: retrying won't help
+        await new Promise((r) => setTimeout(r, 800));
+        await streamChat(conversationId, message, options, handleEvent);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -166,13 +245,14 @@ export default function App() {
     }
   }
 
-  async function versionAction(action: () => Promise<ConversationState>) {
+  /** refreshList=false for undo/redo: they move a pointer and never change the version list. */
+  async function versionAction(action: () => Promise<ConversationState>, refreshList = true) {
     if (!conversationId) return;
     setBusy(true);
     setError(null);
     try {
       applyState(await action());
-      await refreshVersions(conversationId);
+      if (refreshList) await refreshVersions(conversationId);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -198,9 +278,7 @@ export default function App() {
             value={conversationId ?? ""}
             onChange={(e) => {
               const id = e.target.value;
-              if (!id) return;
-              remember(id);
-              setConversationId(id);
+              if (id) openConversation(id);
             }}
           >
             <option value="">Recent…</option>
@@ -216,7 +294,7 @@ export default function App() {
             <button
               className="btn small"
               disabled={working || !state?.can_undo}
-              onClick={() => versionAction(() => api.undo(conversationId))}
+              onClick={() => versionAction(() => api.undo(conversationId), false)}
               title="Undo last change"
             >
               <Undo2 size={15} /> Undo
@@ -224,7 +302,7 @@ export default function App() {
             <button
               className="btn small"
               disabled={working || !state?.can_redo}
-              onClick={() => versionAction(() => api.redo(conversationId))}
+              onClick={() => versionAction(() => api.redo(conversationId), false)}
               title="Redo"
             >
               <Redo2 size={15} /> Redo
@@ -237,13 +315,34 @@ export default function App() {
             </a>
           </>
         )}
+        {state && conversationId && (
+          <PlanPicker
+            plans={plans}
+            current={state.plan ?? "pro"}
+            disabled={working}
+            onChange={(plan) => versionAction(() => api.setPlan(conversationId, plan))}
+          />
+        )}
         <button className="btn small" onClick={newConversation} disabled={!!live}>
           <Plus size={15} /> New
         </button>
       </header>
 
-      {!version || !conversationId ? (
-        <UploadPane onUpload={upload} />
+      {loading ? (
+        <div className="restoring" role="status">
+          <Loader2 size={22} className="spin" />
+          <p>Restoring your session…</p>
+          <button className="btn small" onClick={newConversation}>
+            Start a new one instead
+          </button>
+        </div>
+      ) : !version || !conversationId ? (
+        <UploadPane
+          onUpload={upload}
+          notice={error}
+          last={!conversationId ? recent.find((c) => c.id === recall("local")) ?? null : null}
+          onContinue={openConversation}
+        />
       ) : (
         <main className="workspace">
           <ChatPanel
@@ -252,6 +351,7 @@ export default function App() {
             versions={versions}
             error={error}
             hasJobDescription={!!state?.conversation.context.job_description}
+            presets={presets}
             onSend={send}
             onViewFlow={(f) => {
               setFlow(f);

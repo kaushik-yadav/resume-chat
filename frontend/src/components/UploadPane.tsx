@@ -1,13 +1,18 @@
 import { useRef, useState } from "react";
-import { FileUp, Loader2 } from "lucide-react";
+import { FileUp, History, Loader2 } from "lucide-react";
+import type { ConversationListItem } from "../types";
 
 interface Props {
   onUpload: (file: File) => Promise<void>;
+  /** Previous session, offered as a choice (never opened automatically). */
+  last?: ConversationListItem | null;
+  onContinue?: (id: string) => void;
+  notice?: string | null;
 }
 
 const ACCEPT = ".pdf,.docx";
 
-export default function UploadPane({ onUpload }: Props) {
+export default function UploadPane({ onUpload, last, onContinue, notice }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -49,7 +54,18 @@ export default function UploadPane({ onUpload }: Props) {
         <h2>Chat with your resume</h2>
         <p>Upload a resume and ask for what you need. Specialist agents research companies,
           match job descriptions, translate for new markets and sharpen individual sections.</p>
-        {error && <div className="error-banner">{error}</div>}
+        {(error || notice) && <div className="error-banner">{error || notice}</div>}
+        {last && onContinue && (
+          <button className="continue-card" onClick={() => onContinue(last.id)}>
+            <History size={16} />
+            <span>
+              <b>Continue where you left off</b>
+              <span className="sub">
+                {last.title} · {new Date(last.updated_at).toLocaleString()}
+              </span>
+            </span>
+          </button>
+        )}
         <button className="btn primary" disabled={busy} onClick={() => input.current?.click()}>
           {busy ? <Loader2 size={16} className="spin" /> : <FileUp size={16} />}
           {busy ? "Parsing resume…" : "Upload PDF or DOCX"}

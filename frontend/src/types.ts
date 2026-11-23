@@ -107,6 +107,9 @@ export interface MessageTrace {
   llm: { calls: number; ms: number; input_tokens: number; output_tokens: number };
   ms: number;
   flow?: Flow;
+  subscription_plan?: string;
+  cost_usd?: number;
+  decided_by?: string | null;
 }
 
 export interface ChatMessage {
@@ -124,6 +127,7 @@ export interface ConversationState {
   current_version: ResumeVersion | null;
   can_undo: boolean;
   can_redo: boolean;
+  plan?: string;
   messages?: ChatMessage[];
 }
 
@@ -131,7 +135,7 @@ export interface ConversationState {
 export type StreamEvent =
   | { type: "user_message"; message: ChatMessage }
   | { type: "status"; stage: string; message: string }
-  | { type: "plan"; intent: string; reasoning: string; steps: PlanStep[] }
+  | { type: "plan"; intent: string; reasoning: string; steps: PlanStep[]; decided_by?: string; route_ms?: number }
   | { type: "agent_start"; agent: string; title: string; index: number; total: number; instruction: string }
   | { type: "progress"; agent: string; message: string }
   | ({ type: "agent_result" } & AgentResult)
@@ -167,6 +171,9 @@ export interface FlowLLMCall {
   ms: number;
   input_tokens: number;
   output_tokens: number;
+  cost_usd?: number | null;
+  status?: "ok" | "error" | "cancelled";
+  estimated?: boolean;
 }
 
 export interface FlowNode {
@@ -179,9 +186,38 @@ export interface FlowNode {
   detail: Record<string, any>;
   steps: FlowStep[];
   llm: FlowLLMCall[];
+  cost_usd?: number;
 }
 
 export interface Flow {
   nodes: FlowNode[];
   total_ms: number;
+  cost_usd?: number;
+  incomplete_cost_usd?: number;
+}
+
+// ----- product catalogue ------------------------------------------------------
+export interface PlanPrice {
+  model: string;
+  input_per_1m: number | null;
+  output_per_1m: number | null;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  tagline: string;
+  router_model: string;
+  agent_model: string;
+  reply_model: string;
+  agent_effort: string;
+  features: string[];
+  prices: Record<"router" | "agent" | "reply", PlanPrice>;
+}
+
+export interface Preset {
+  id: string;
+  label: string;
+  agent: string;
+  needs_job_description: boolean;
 }

@@ -37,7 +37,68 @@ One chat turn:
    The UI renders that trace under each reply as "Agent reasoning".
 5. Conversation memory is updated, and old turns are summarized when history grows.
 
-## 2. The router
+## 2. Routing cascade
+
+Routing runs on every turn, so it has to be fast. Cheaper tiers go first, and the first tier
+that is sure decides:
+
+| Tier | Latency | Cost | Decides when |
+|---|---|---|---|
+| **Preset** (suggested-action chip) | ~0 ms | $0 | The user clicked a suggestion: the plan is predefined, so no classification is needed |
+| **Rules** | ~0 ms | $0 | Bare `undo` / `redo` / small talk |
+| **Cache** | ~0 ms | $0 | Exact repeat (normalized text + memory slots + resume language/sections); never for context-dependent wording such as "same" or "them" |
+| **Fast classifier** | ~0.5 s | ~$0 | Embedding kNN over labelled example requests, plus rule-based slot extraction (language→locale, company, sections, role). Abstains on low confidence, compound requests, questions, or missing slots |
+| **LLM router** | ~1.1 s | ~$0.0005 | Everything else: lite model with structured output |
+
+The classifier runs **speculatively in parallel** with the LLM router. When it is confident, the
+LLM call is cancelled; when it abstains, the LLM answer is already in flight, so abstaining adds
+no latency. The cancelled call is still metered, because the provider may bill the input it
+already read.
+
+**Evaluation methodology** (`backend/evals/routing_eval.py`, data in `routing_cases.py`):
+
+- **Split:**
+  - 23 *calibration* cases are the only data used to choose the classifier's thresholds:
+    highest coverage at 100% precision, from a 10 × 11 grid sweep.
+  - 30 *held-out* cases are used only for scoring: unseen paraphrases and new requests.
+  - A test guards the split against exact and near-duplicate overlap with calibration cases and
+    the classifier's examples.
+- **Strict scoring:** exact intent, exact ordered agent list, exact canonical slot values.
+- **Genuine baseline:** `route(mode="llm_only")` bypasses presets, rules, cache *and*
+  classifier.
+- **Latency:**
+  - warm-up calls are discarded;
+  - each case is repeated 3×, with the two modes interleaved to cancel drift;
+  - results are reported as median and p95;
+  - the route cache is disabled, so repeats can't hit it.
+- **Cost:** billed cost of completed LLM and embedding calls, plus an upper bound for cancelled
+  speculative calls.
+
+Held-out results (30 cases × 3 runs per mode; saved in `backend/evals/results/routing_eval.json`):
+
+| Router | Accuracy | Stable cases | Median | p95 | Billed per request | Decided by |
+|---|---|---|---|---|---|---|
+| LLM only (lite) | 100% | 30/30 | 1.04 s | 1.44 s | $0.00049 | LLM 90 |
+| Cascade | 100% | 30/30 | **0.42 s** | 1.31 s | $0.00022 (+ ≤ $0.00011 cancelled) | classifier 42 · LLM 39 · rules 9 |
+
+The classifier answered 47% of held-out requests with 100% precision, at the thresholds chosen
+on the calibration split (`min_confidence=0.55`, `min_similarity=0.76`). Even counting the
+cancelled speculative calls at their upper bound, the cascade costs less than the LLM-only
+router.
+
+**Caveat:** 30 cases is a small test set. 100% means the true error rate is below ~10% with 95%
+confidence (rule of three), not that routing is never wrong. The set should grow with real
+traffic.
+
+Calibration mattered:
+- A first version of the classifier reached only 85%. Embeddings cannot tell "tailor my resume
+  for Google" from "tailor my resume to this job"; that distinction is structural, so it is now
+  resolved by explicit cues (a named company vs. posting words).
+- A later threshold change exposed a gap in compound detection: "optimize it for Google *and*
+  translate it" was answered as a single step. The classifier now abstains on "and" + an action
+  verb, and whenever a language is named but the label isn't translation.
+
+## 3. The router (LLM tier)
 
 `orchestration/router.py`. One LLM call with **structured output** returns a `RoutingDecision`:
 
@@ -62,22 +123,78 @@ Multi-agent requests ("optimize for Google, then translate to Spanish for Mexico
 **sequential pipeline**: each agent receives the previous agent's output as its working
 resume. A failing step is recorded as a warning and the remaining steps still run.
 
-## 3. The agents
+## 4. Plans, models and cost
+
+`app/plans.py` maps three LLM roles to models per plan. Agents are plan-agnostic: `TieredLLM`
+picks the model of the conversation's plan for every call through a context variable.
+
+| Plan | Routing | Agents | Reply | Measured on a real resume |
+|---|---|---|---|---|
+| Free | 3.5 Flash-Lite | 3.5 Flash-Lite | 3.5 Flash-Lite | translate preset 4.8 s / $0.005; skills edit 4.9 s / $0.002 |
+| Pro | 3.5 Flash-Lite | 3.8 Flash | 3.5 Flash-Lite | translate preset 9.4 s / $0.010 |
+| Premium | 3.5 Flash-Lite | 3.8 Flash (medium reasoning) | 3.8 Flash | deeper analysis, highest cost |
+
+The router and the reply use the lite model on every plan: routing scores 100% on the held-out eval
+with it, and the reply only summarizes structured results. Spend goes where quality shows,
+which is the agents' rewriting. Costs are computed from real token usage × the published
+Gemini prices (USD per 1M tokens: 3.5 Flash-Lite $0.30 in / $2.50 out; 3.8 Flash $0.75 / $3.75,
+an introductory rate through 2026). They are shown per LLM call, per node, per reply and per plan.
+
+### LLM client robustness (`app/llm/client.py`)
+
+- **Explicit roles:** every client maps router, agent *and* reply. A missing role fails at
+  start-up instead of silently using another role's model. OpenAI has its own reply model.
+- **Model fallback:** if a model rejects a request as unsupported (400/404/422, "unsupported",
+  "response_schema"), structured output retries with function calling on the same model, then
+  a configured fallback model. A stream can fall back only before its first token. Rate limits,
+  auth failures, timeouts and 5xx errors are never masked.
+- **Metering in `finally`:** every LLM and embedding call is recorded as `ok`, `error` or
+  `cancelled`, including a reply stream the user abandons and a cancelled speculative router
+  call. Incomplete calls carry estimated tokens and are reported as an upper bound, never mixed
+  into billed cost. The trace is captured when the call starts, and streams are closed with
+  `aclosing`, so a late close still lands in the right turn.
+
+**Is LangSmith worth it here?** For this scope, the in-process trace is enough, and it is
+product data rather than just debugging data:
+- it powers the Agent flow view and per-reply cost;
+- it is persisted with each message;
+- it works offline and in tests.
+
+LangSmith adds value at team or production scale: cross-run search, prompt and dataset
+versioning, eval runs over stored datasets, and dashboards. Because the app is built on
+LangChain, it can be switched on with environment variables only (`LANGSMITH_TRACING=true`,
+`LANGSMITH_API_KEY=…`; older versions use `LANGCHAIN_TRACING_V2`). That sends prompts, which
+contain resume content, to a hosted service, so it should be an explicit opt-in.
+
+## 5. Performance work (measured)
+
+| Problem (seen in the flow view) | Fix | Before → after |
+|---|---|---|
+| Translation wrote the whole resume in one long LLM call | One small planning call (headings, notes) in parallel with one call per section | 30.7 s → 7.8 s (Pro), 2.5 s (Free) |
+| JD agent embedded each requirement separately | One batched embedding + one Chroma query; extraction and indexing run concurrently; requirements cached per JD | ~5 s of retrieval → 1 call |
+| Every turn listed all messages (with full traces) and all versions | Recent-N query with field projection; latest version number via a 1-field query | history 1.45 s → 0.11 s; version 0.9 s → ~0.1 s |
+| Re-embedding the new version blocked the reply | Background task; only steps that read the index wait for it | −1.3 s per editing turn |
+| Undo/redo re-read Firestore and re-embedded synchronously | Write-through LRU cache of conversations, immutable versions and messages; re-index in background; UI no longer re-fetches the version list | undo/redo 1.5 s → 13–15 ms |
+| Nested trace/resume maps were slow to (de)serialize | Large nested fields stored as JSON strings (legacy documents still readable) | cold conversation load 1.81 s → 0.67 s |
+| Retries could re-run a whole turn | Idempotency key per message; stored answer replayed | retry 0.4 s, no agent work |
+
+Each reply's trace records `timings_ms` (prepare, graph and persist), so regressions are visible.
+
+## 6. The agents
 
 Every agent implements `async run(ctx) -> AgentResult`. Each is a small, explicit workflow
 rather than a free-running tool loop. That keeps latency predictable, makes each step
 observable in the UI, and leaves scoring and safety checks to deterministic code.
 
-| Agent | Workflow | LLM calls | Live latency* |
+| Agent | Workflow | LLM calls | Agent latency* (Free / Pro) |
 |---|---|---|---|
-| **Section Enhancement** | style lint (weak openers, pronouns, mixed date formats) → retrieve writing guidance from KB → rewrite target sections → re-lint | 1 | 5–13 s |
-| **JD Matching** | extract requirements + ATS keywords → **vector search for resume evidence per requirement** → assess met/partial/missing → deterministic score → tailor sections → re-score keyword coverage | 3 | 24–39 s |
-| **Company Research** | cache check → 3 concurrent web searches (Tavily) → store snippets in Chroma → retrieve top-k → company profile (values, hiring signals, emphasis, vocabulary) → tailor sections | 2 | ~15 s (faster when cached) |
-| **Translation & Localization** | exact locale lookup in the curated KB (web research fallback for uncovered markets) → translate + localize all sections → verify every number/date survived | 1 | ~12 s |
+| **Section Enhancement** | style lint (weak openers, pronouns, mixed date formats) → retrieve writing guidance from KB → rewrite target sections → re-lint | 1 | 1.7 s / 4.2 s |
+| **JD Matching** | extract requirements + ATS keywords (cached per JD) ‖ index resume → **one batched vector search for evidence of every requirement** → assess met/partial/missing → deterministic score → tailor sections → re-score keyword coverage | 3 | 10 s / 23 s |
+| **Company Research** | cache check → 3 concurrent web searches (Tavily) → store snippets in Chroma → retrieve top-k → company profile (values, hiring signals, emphasis, vocabulary) → tailor sections | 2 | 4 s / 15 s (faster when cached) |
+| **Translation & Localization** | exact locale lookup in the curated KB (web research fallback for uncovered markets) → **localization plan ‖ every section translated in parallel** → verify every number/date survived | 1 + N (parallel) | 1.7–2.5 s / 6–8 s |
 
-\*Measured against Gemini 3.8 Flash on the sample resume. A two-agent turn (company research
-+ translation, including routing and the streamed summary) took ~40 s, with progress events
-streaming throughout.
+\*Measured with `backend/evals/agent_benchmark.py` and live turns on real resumes. A full
+editing turn on Free takes about 4–5 s end to end (routing, agent, streamed reply, versioning).
 
 **Match score.** The score is computed in code, not asked of the LLM, so it is reproducible
 and explainable:
@@ -93,7 +210,7 @@ are surfaced to the user as action items. In live testing, the guard caught the 
 deriving "66%" from "6 hours to 2 hours". The prompt was then tightened to forbid derived
 figures.
 
-## 4. Context engineering
+## 7. Context engineering
 
 The design goal is to give each LLM call exactly the context it needs, in a structured and
 bounded form.
@@ -126,7 +243,7 @@ accurate, because the graph runs ahead of the consumer of its event stream:
 Snapshots stream as `flow` events, so the **Agent flow** tab animates live. The final
 snapshot is stored in the message trace, so any past reply can be replayed with "View flow".
 
-## 5. State and persistence
+## 8. State and persistence
 
 ```
 Firestore
@@ -136,6 +253,11 @@ conversations/{id}/versions/{id}    number, parent_id, source(upload|agents|rest
 ```
 
 - Versions are **immutable** and form a parent chain. `current_version_id` is a pointer.
+- A **write-through cache** (`storage/cache.py`) sits in front of Firestore: reads of
+  conversations, versions and messages are served from memory, and writes go to Firestore
+  first. Because versions never change, caching them cannot serve stale data. The cache is
+  per process (bounded LRU); several replicas would use Redis or per-conversation sticky
+  routing behind the same interface.
 - **Undo** moves the pointer to the parent and pushes the old pointer onto `redo_stack`.
   **Redo** pops it. A new edit clears the redo stack. **Restore** copies an old version into a
   new one, so history is never rewritten.
@@ -146,13 +268,13 @@ conversations/{id}/versions/{id}    number, parent_id, source(upload|agents|rest
 - The Firestore client supports gRPC (default) or a REST transport (`FIRESTORE_TRANSPORT=rest`)
   for networks that block HTTP/2. This was needed on the development machine.
 
-## 6. Technology choices
+## 9. Technology choices
 
 | Choice | Why |
 |---|---|
 | **LangGraph** (LangChain) for orchestration | Explicit state machine (route → loop over steps → respond), typed state, conditional edges and a built-in custom event stream for real-time UI. More predictable than a free-form multi-agent chat. |
 | **LangChain chat models** with `with_structured_output(method="json_schema")` | Provider-agnostic: Gemini is the default, OpenAI is one env var away (`LLM_PROVIDER=openai`). Agents depend only on a three-method `LLM` protocol, which also makes them unit-testable with a fake. |
-| **Gemini 3.8 Flash** | Benchmarked candidates on this app's two core call types (routing plan and section rewrite). It produced the correct plan (no spurious JD step without a JD) and followed the no-fabrication placeholder rule, at ~3–4 s per call. `gemini-3.5-flash` was faster but over-routed; the available OpenAI key had no credits. Low reasoning effort keeps chat responsive. |
+| **Gemini 3.5 Flash-Lite + 3.8 Flash** | Chosen by measurement (`backend/evals/`). Flash-Lite routes with 100% held-out accuracy at ~1.0 s median and runs agents 3–4× faster at about half the cost; 3.8 Flash writes the best rewrites and translations, so the paid plans use it for agents. The available OpenAI key had no credits. |
 | **Gemini embeddings** (`gemini-embedding-001`, 768-d) | Multilingual: English and Spanish resume text share one vector space, which matters after translation. A hash embedder is used offline and in tests. |
 | **Chroma** | Embedded vector DB, no service to run, metadata filtering per conversation/company, persistent on disk. |
 | **Tavily** (LangChain integration) with DuckDuckGo fallback | Tavily returns clean, LLM-ready snippets; DuckDuckGo keeps the agent working without a key. Queries run concurrently and are de-duplicated. Results are cached per company (72 h TTL). |
@@ -160,7 +282,7 @@ conversations/{id}/versions/{id}    number, parent_id, source(upload|agents|rest
 | **Deterministic parsing** (pypdf / python-docx + heading classifier) | Instant, free and testable. Handles DOCX tables and ignores ALL-CAPS names and job titles that naive heading detectors mistake for sections. |
 | **Server-Sent Events** | One-way server→client streaming is all a chat turn needs. Simpler than WebSockets and works through proxies. The UI parses SSE from a `fetch` POST. |
 
-## 7. Limitations and next steps
+## 10. Limitations and next steps
 
 - **Latency:** multi-agent turns take 30–40 s. Next steps: run independent analysis steps in
   parallel (e.g. JD extraction while the resume is indexed), cache company profiles as well
