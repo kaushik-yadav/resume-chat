@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { History, RotateCcw } from "lucide-react";
+import { History, RotateCcw, Workflow } from "lucide-react";
 import { api } from "../api";
-import type { ResumeVersion, SectionChange, VersionSummary } from "../types";
+import type { Flow, ResumeVersion, SectionChange, VersionSummary } from "../types";
 import DiffView from "./DiffView";
+import FlowView from "./FlowView";
+import ResumeSectionBody from "./ResumeSectionBody";
 
-type Tab = "resume" | "changes" | "history";
+export type Tab = "resume" | "changes" | "history" | "flow";
 
 interface Props {
   conversationId: string;
@@ -14,15 +14,6 @@ interface Props {
   versions: VersionSummary[];
   onRestore: (versionId: string) => void;
   busy: boolean;
-}
-
-/** Keep the resume's line structure: PDF text often has one item per line without bullets,
- * which plain Markdown would merge into a single paragraph. */
-function withLineBreaks(content: string): string {
-  return content
-    .split("\n")
-    .map((line) => (line.trim() && !/^\s*[-*] /.test(line) ? `${line}  ` : line))
-    .join("\n");
 }
 
 function ResumeView({ version }: { version: ResumeVersion }) {
@@ -46,7 +37,7 @@ function ResumeView({ version }: { version: ResumeVersion }) {
               {s.title}
               {changed.has(s.id) && <span className="changed-tag">● updated</span>}
             </h3>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{withLineBreaks(s.content)}</ReactMarkdown>
+            <ResumeSectionBody content={s.content} />
           </div>
         ),
       )}
@@ -122,8 +113,15 @@ function HistoryList({ version, versions, onRestore, busy }: Omit<Props, "conver
   );
 }
 
-export default function ResumePanel(props: Props) {
-  const [tab, setTab] = useState<Tab>("resume");
+interface PanelProps extends Props {
+  tab: Tab;
+  onTab: (tab: Tab) => void;
+  flow: Flow | null;
+  flowLive: boolean;
+}
+
+export default function ResumePanel(props: PanelProps) {
+  const { tab, onTab: setTab } = props;
   const changeCount = props.version.changes.length;
   return (
     <section className="resume-pane" aria-label="Resume">
@@ -138,6 +136,10 @@ export default function ResumePanel(props: Props) {
           <History size={13} style={{ verticalAlign: -2 }} /> History
           <span className="count">{props.versions.length}</span>
         </button>
+        <button className={tab === "flow" ? "on" : ""} onClick={() => setTab("flow")}>
+          <Workflow size={13} style={{ verticalAlign: -2 }} /> Agent flow
+          {props.flowLive && <span className="live-dot" aria-label="running" />}
+        </button>
       </nav>
       <div className="pane-body">
         {tab === "resume" && <ResumeView version={props.version} />}
@@ -147,6 +149,7 @@ export default function ResumePanel(props: Props) {
         {tab === "history" && (
           <HistoryList version={props.version} versions={props.versions} onRestore={props.onRestore} busy={props.busy} />
         )}
+        {tab === "flow" && <FlowView flow={props.flow} live={props.flowLive} />}
       </div>
     </section>
   );

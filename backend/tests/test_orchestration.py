@@ -241,3 +241,66 @@ def test_guard_ignores_24_7():
     from app.agents.guardrails import new_numbers
 
     assert new_numbers("on-call rotation", "24/7 on-call rotation") == []
+
+
+# ---------------------------------------------------------------- execution flow
+def final_flow(events):
+    return [e for e in events if e["type"] == "flow"][-1]
+
+
+async def test_flow_records_multi_agent_execution(svc_conv):
+    svc, cid = svc_conv
+    events = await turn(
+        svc, cid, "Optimize my resume for Google and translate it to Spanish for Mexico"
+    )
+    flow = final_flow(events)
+    ids = [n["id"] for n in flow["nodes"]]
+    assert ids == [
+        "trigger",
+        "router",
+        "agent:company_research",
+        "agent:translation",
+        "respond",
+        "version",
+    ]
+    assert all(n["status"] == "done" for n in flow["nodes"])
+    nodes = {n["id"]: n for n in flow["nodes"]}
+    assert [c["name"] for c in nodes["router"]["llm"]] == ["RoutingDecision"]
+    assert [c["name"] for c in nodes["agent:company_research"]["llm"]] == [
+        "CompanyProfile",
+        "EditPlan",
+    ]
+    assert nodes["agent:company_research"]["steps"] and all(
+        s["end_ms"] is not None for s in nodes["agent:company_research"]["steps"]
+    )
+    assert nodes["version"]["detail"]["number"] == 2
+    assert nodes["router"]["start_ms"] <= nodes["agent:translation"]["start_ms"] <= flow["total_ms"]
+    # Live snapshots showed agents running before they finished.
+    running = [
+        n["id"]
+        for e in events
+        if e["type"] == "flow"
+        for n in e["nodes"]
+        if n["status"] == "running"
+    ]
+    assert "agent:translation" in running
+    # The final flow is stored with the message for replay.
+    assert events[-1]["message"]["trace"]["flow"]["nodes"][-1]["id"] == "version"
+
+
+async def test_flow_shapes_for_clarify_undo_and_question(svc_conv):
+    svc, cid = svc_conv
+    clarify = final_flow(await turn(svc, cid, "Match my resume to this job description"))
+    assert [n["id"] for n in clarify["nodes"]] == ["trigger", "router", "respond"]
+    assert clarify["nodes"][-1]["status"] == "done"
+
+    nothing = final_flow(await turn(svc, cid, "undo"))
+    assert nothing["nodes"][-1]["status"] == "skipped"  # nothing to undo yet
+
+    await turn(svc, cid, "Make my experience section stronger")
+    undo = final_flow(await turn(svc, cid, "undo that"))
+    assert undo["nodes"][-1]["label"] == "Undo" and undo["nodes"][-1]["status"] == "done"
+    assert undo["nodes"][1]["llm"] == []  # fast path: no LLM call for routing
+
+    question = final_flow(await turn(svc, cid, "What are my strengths?"))
+    assert [n["id"] for n in question["nodes"]] == ["trigger", "router", "respond"]

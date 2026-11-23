@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { GitCommitHorizontal } from "lucide-react";
-import type { ChatMessage } from "../types";
+import { GitCommitHorizontal, Workflow } from "lucide-react";
+import type { ChatMessage, Flow } from "../types";
 import AgentCard from "./AgentCard";
 
 const INTENT_LABEL: Record<string, string> = {
@@ -16,9 +16,11 @@ const INTENT_LABEL: Record<string, string> = {
 export default function MessageBubble({
   message,
   versionNumber,
+  onViewFlow,
 }: {
   message: ChatMessage;
   versionNumber?: number;
+  onViewFlow?: (flow: Flow) => void;
 }) {
   const trace = message.trace;
   return (
@@ -47,11 +49,18 @@ export default function MessageBubble({
           </details>
         )}
       </div>
-      {message.role === "assistant" && versionNumber && (
+      {message.role === "assistant" && (versionNumber || trace?.flow) && (
         <div className="meta">
-          <span className="version-chip">
-            <GitCommitHorizontal size={13} /> Saved as version {versionNumber}
-          </span>
+          {versionNumber && (
+            <span className="version-chip">
+              <GitCommitHorizontal size={13} /> Saved as version {versionNumber}
+            </span>
+          )}
+          {trace?.flow && onViewFlow && (
+            <button className="link-btn" onClick={() => onViewFlow(trace.flow!)}>
+              <Workflow size={13} /> View flow
+            </button>
+          )}
         </div>
       )}
     </div>

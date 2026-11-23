@@ -106,6 +106,7 @@ export interface MessageTrace {
   results: AgentResult[];
   llm: { calls: number; ms: number; input_tokens: number; output_tokens: number };
   ms: number;
+  flow?: Flow;
 }
 
 export interface ChatMessage {
@@ -137,6 +138,7 @@ export type StreamEvent =
   | { type: "token"; text: string }
   | { type: "version"; version: ResumeVersion; can_undo: boolean; can_redo: boolean }
   | ({ type: "done"; message: ChatMessage } & ConversationState)
+  | ({ type: "flow" } & Flow)
   | { type: "error"; message: string };
 
 /** What the UI shows while a turn is in flight. */
@@ -147,4 +149,39 @@ export interface LiveTurn {
   progress: { agent: string; message: string }[];
   results: AgentResult[];
   reply: string;
+}
+
+// ----- execution flow (n8n-style view) -----------------------------------------
+export type FlowStatus = "pending" | "running" | "done" | "error" | "skipped";
+
+export interface FlowStep {
+  label: string;
+  status: FlowStatus;
+  start_ms: number | null;
+  end_ms: number | null;
+}
+
+export interface FlowLLMCall {
+  name: string;
+  model: string;
+  ms: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+export interface FlowNode {
+  id: string;
+  kind: "trigger" | "router" | "agent" | "respond" | "version";
+  label: string;
+  status: FlowStatus;
+  start_ms: number | null;
+  end_ms: number | null;
+  detail: Record<string, any>;
+  steps: FlowStep[];
+  llm: FlowLLMCall[];
+}
+
+export interface Flow {
+  nodes: FlowNode[];
+  total_ms: number;
 }

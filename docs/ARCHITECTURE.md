@@ -111,6 +111,21 @@ bounded form.
 | **Structured outputs everywhere** | Pydantic schemas → JSON-schema-constrained generation, one automatic repair retry | Reliable parsing; deterministic code can then validate the plan and apply edits. |
 | **Two model roles** | `router` (routing, summaries, replies) vs `agent` (rewriting) | Can be tuned independently for latency or quality (`ROUTER_MODEL`, `AGENT_MODEL`, reasoning effort). |
 
+### Execution flow view
+
+`services/flow.py` turns each turn's stream events into an n8n-style node graph:
+`trigger → router → agent(s) → reply → version`. Every node has a status (pending,
+running, done, error or skipped), start/end offsets, timed sub-steps (the agent's progress
+messages) and the LLM calls it made, with model, latency and tokens. Two details keep it
+accurate, because the graph runs ahead of the consumer of its event stream:
+
+- each workflow node sets a context variable (`current_node`), and every LLM call is tagged
+  with it;
+- events carry their emit timestamp.
+
+Snapshots stream as `flow` events, so the **Agent flow** tab animates live. The final
+snapshot is stored in the message trace, so any past reply can be replayed with "View flow".
+
 ## 5. State and persistence
 
 ```

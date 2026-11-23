@@ -30,6 +30,31 @@ SectionKind = Literal[
 ]
 
 
+def markdown_block(content: str) -> str:
+    """Section content -> Markdown that renders line for line.
+
+    Plain Markdown would glue a role line onto the bullet above it ("lazy continuation") and
+    merge consecutive plain lines into one paragraph. A blank line separates bullet runs from
+    plain lines, and plain lines get hard breaks.
+    """
+
+    def is_bullet(line: str) -> bool:
+        return line.lstrip().startswith(("- ", "* "))
+
+    lines = [raw.rstrip() for raw in content.strip().split("\n")]
+    out: list[str] = []
+    for i, line in enumerate(lines):
+        if not line.strip():
+            out.append("")
+            continue
+        if out and out[-1] and is_bullet(out[-1]) != is_bullet(line):
+            out.append("")
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        hard_break = not is_bullet(line) and nxt.strip() and not is_bullet(nxt)
+        out.append(f"{line}  " if hard_break else line)
+    return "\n".join(out).strip()
+
+
 class ResumeSection(BaseModel):
     id: str = Field(description="Stable identifier, e.g. 'experience' or 'projects-2'.")
     title: str = Field(description="Heading as shown on the resume.")
@@ -80,9 +105,9 @@ class Resume(BaseModel):
         parts = []
         for s in self.sections:
             if s.kind == "header":
-                parts.append(s.content.strip())
+                parts.append(markdown_block(s.content))
             else:
-                parts.append(f"## {s.title}\n\n{s.content.strip()}")
+                parts.append(f"## {s.title}\n\n{markdown_block(s.content)}")
         return "\n\n".join(p for p in parts if p).strip() + "\n"
 
     def to_text(self) -> str:

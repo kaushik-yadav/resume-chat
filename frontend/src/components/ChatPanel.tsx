@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ChatMessage, LiveTurn, VersionSummary } from "../types";
+import type { ChatMessage, Flow, LiveTurn, VersionSummary } from "../types";
 import Composer from "./Composer";
 import LiveActivity from "./LiveActivity";
 import MessageBubble from "./MessageBubble";
@@ -11,9 +11,18 @@ interface Props {
   error: string | null;
   hasJobDescription: boolean;
   onSend: (message: string, jobDescription: string | null) => void;
+  onViewFlow: (flow: Flow) => void;
 }
 
-export default function ChatPanel({ messages, live, versions, error, hasJobDescription, onSend }: Props) {
+export default function ChatPanel({
+  messages,
+  live,
+  versions,
+  error,
+  hasJobDescription,
+  onSend,
+  onViewFlow,
+}: Props) {
   const end = useRef<HTMLDivElement>(null);
   const numberOf = (id: string | null) => versions.find((v) => v.id === id)?.number;
 
@@ -25,7 +34,12 @@ export default function ChatPanel({ messages, live, versions, error, hasJobDescr
     <section className="chat" aria-label="Chat">
       <div className="messages">
         {messages.map((m) => (
-          <MessageBubble key={m.id} message={m} versionNumber={m.version_id ? numberOf(m.version_id) : undefined} />
+          <MessageBubble
+            key={m.id}
+            message={m}
+            versionNumber={m.version_id ? numberOf(m.version_id) : undefined}
+            onViewFlow={onViewFlow}
+          />
         ))}
         {live && <LiveActivity turn={live} />}
         <div ref={end} />
