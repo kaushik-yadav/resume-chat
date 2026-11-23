@@ -193,8 +193,10 @@ class FirestoreRepository(Repository):
 
     def delete_conversation(self, conversation_id: str) -> None:
         ref = self._conv_ref(conversation_id)
-        for sub in ("messages", "versions"):
+        for sub in ("messages", "versions", "originals"):
             for doc in ref.collection(sub).stream():
+                for chunk in doc.reference.collection("chunks").stream():
+                    chunk.reference.delete()
                 doc.reference.delete()
         ref.delete()
 
@@ -261,6 +263,26 @@ class FirestoreRepository(Repository):
         )
         doc = next(iter(query.stream()), None)
         return int(doc.to_dict()["number"]) if doc else 0
+
+    # Uploaded files: metadata document + ~900 KB chunks (a Firestore document holds <= 1 MiB).
+    _CHUNK = 900_000
+
+    def save_original(self, conversation_id: str, upload_id: str, filename: str, data: bytes) -> None:
+        ref = self._require(conversation_id)[0].collection("originals").document(upload_id)
+        chunks = [data[i : i + self._CHUNK] for i in range(0, len(data), self._CHUNK)] or [b""]
+        for n, part in enumerate(chunks):
+            ref.collection("chunks").document(f"{n:04d}").set({"n": n, "data": part})
+        ref.set({"filename": filename, "size": len(data), "chunks": len(chunks)})
+
+    def get_original(self, conversation_id: str, upload_id: str) -> tuple[str, bytes] | None:
+        ref = self._conv_ref(conversation_id).collection("originals").document(upload_id)
+        meta = ref.get()
+        if not meta.exists:
+            return None
+        info = meta.to_dict()
+        parts = sorted((d.to_dict() for d in ref.collection("chunks").stream()), key=lambda d: d["n"])
+        data = b"".join(bytes(p["data"]) for p in parts[: info["chunks"]])
+        return (info["filename"], data) if len(data) == info["size"] else None
 
 
 def create_repository(settings: Settings) -> Repository:

@@ -27,6 +27,8 @@ dependencies = [
   # Resume parsing / export
   "pypdf>=5.0",
   "python-docx>=1.1",
+  "fpdf2>=2.8",
+  "pymupdf>=1.26",
 ]
 
 [dependency-groups]

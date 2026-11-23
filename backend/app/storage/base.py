@@ -70,3 +70,12 @@ class Repository(ABC):
 
     def latest_version_number(self, conversation_id: str) -> int:
         return max((v.number for v in self.list_versions(conversation_id)), default=0)
+
+    # ---------------------------------------------------------------- originals
+    # The uploaded file itself, keyed by the version its upload created: exports edit it in
+    # place to keep the original layout. Backends that cannot store files return None.
+    def save_original(self, conversation_id: str, upload_id: str, filename: str, data: bytes) -> None:
+        return None
+
+    def get_original(self, conversation_id: str, upload_id: str) -> tuple[str, bytes] | None:
+        return None

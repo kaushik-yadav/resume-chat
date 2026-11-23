@@ -8,6 +8,7 @@ update conversation memory -> (maybe) summarize old turns.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from collections import defaultdict
@@ -25,6 +26,7 @@ from app.parsing.sectionizer import parse_resume, repair_resume
 from app.plans import PLANS, get_plan
 from app.retrieval.vector_store import VectorStore
 from app.services.context import build_history, maybe_summarize
+from app.services.export import prerender
 from app.services.flow import FlowRecorder
 from app.services.versioning import VersionError, VersionService
 from app.storage.base import Repository
@@ -76,18 +78,41 @@ class ChatService:
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         # Re-indexing the new version runs after "done"; the next turn awaits it first.
         self._indexing: dict[str, asyncio.Task] = {}
+        self._background: set[asyncio.Task] = set()
 
     # ------------------------------------------------------------ helpers
     async def _io(self, fn, *args, **kwargs):
         return await asyncio.to_thread(fn, *args, **kwargs)
 
     def _index_later(self, conversation_id: str, version: ResumeVersion) -> None:
-        """Embed the new version in the background so the reply is not held up by it."""
-        task = asyncio.create_task(
-            self._io(self.vectors.index_resume, conversation_id, version.id, version.resume)
-        )
+        """Embed the new version in the background so the reply is not held up by it.
+
+        Re-indexes of one conversation are serialized: each waits for the previous one, so an
+        edit quickly followed by an undo never runs two delete-and-insert passes at once (and
+        whoever waits on the latest task waits on all of them).
+        """
+        previous = self._indexing.get(conversation_id)
+
+        async def reindex() -> None:
+            if previous is not None:
+                with contextlib.suppress(Exception):
+                    await previous
+            await self._io(self.vectors.index_resume, conversation_id, version.id, version.resume)
+
+        task = asyncio.create_task(reindex())
         task.add_done_callback(lambda t: t.cancelled() or t.exception())  # logged, not raised
         self._indexing[conversation_id] = task
+        self._prerender_later(conversation_id, version)
+
+    def _prerender_later(self, conversation_id: str, version: ResumeVersion) -> None:
+        """Warm the export cache so "Download PDF" for a new version is served instantly.
+
+        Independent of indexing: nothing waits for it. Tasks are kept referenced until done
+        (the event loop only holds weak references to tasks).
+        """
+        task = asyncio.create_task(self._io(prerender, conversation_id, version, "pdf", self.repo))
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
 
     async def _index_ready(self, conversation_id: str) -> None:
         task = self._indexing.pop(conversation_id, None)
@@ -156,7 +181,10 @@ class ChatService:
             name = header[0].content.split("\n")[0].strip()[:40] if header else ""
             conv.filename = filename
             conv.title = f"{name}'s resume" if name else filename
+            # Keep the uploaded file: exports edit it in place to preserve its layout.
+            await self._io(self.repo.save_original, conv.id, version.id, filename, data)
             await self._io(self.vectors.index_resume, conv.id, version.id, resume)
+            self._prerender_later(conv.id, version)
             message = await self._add_message(
                 conv,
                 ChatMessage(
@@ -193,6 +221,7 @@ class ChatService:
         *,
         client_message_id: str | None = None,
         preset: str | None = None,
+        selection: list[str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Run one turn. ``client_message_id`` makes the call idempotent: a retry or a double
         submit of the same message replays the stored answer instead of running it again."""
@@ -221,7 +250,13 @@ class ChatService:
             raise ChatError("Still working on your previous message - one moment.")
         async with lock:
             async for event in self._turn(
-                conversation_id, text, job_description, client_message_id, preset, resume_from
+                conversation_id,
+                text,
+                job_description,
+                client_message_id,
+                preset,
+                resume_from,
+                selection,
             ):
                 yield event
 
@@ -248,6 +283,7 @@ class ChatService:
         client_message_id: str | None = None,
         preset: str | None = None,
         resume_from: ChatMessage | None = None,
+        selection: list[str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         started = time.perf_counter()
         trace = start_trace()
@@ -263,6 +299,9 @@ class ChatService:
         if job_description and job_description.strip():
             memory.job_description = job_description.strip()
         content = text if not job_description else f"{text}\n\n[Attached job description]"
+        if selection:
+            quoted = "\n".join(f"> {s.strip()}" for s in selection if s.strip())
+            content = f"{content}\n\n{quoted}"
         if resume_from is not None:
             user_msg = resume_from
             history_msgs = [m for m in history_msgs if m.seq < resume_from.seq]
@@ -274,7 +313,9 @@ class ChatService:
         plan = self.plan_of(conv)
         current_plan.set(plan)  # every LLM call in this turn uses the plan's models
         flow = FlowRecorder(trace, text, bool(job_description and job_description.strip()))
-        flow.nodes[0]["detail"].update(plan=plan, preset=preset)
+        flow.nodes[0]["detail"].update(
+            plan=plan, preset=preset, selected_lines=len(selection or [])
+        )
         yield {"type": "flow", **flow.snapshot()}
 
         state = {
@@ -285,6 +326,7 @@ class ChatService:
             # Agents work on a repaired copy (old uploads may hold PDF-wrapped lines).
             "resume": repair_resume(current.resume),
             "preset": preset,
+            "selection": [s.strip() for s in (selection or []) if s.strip()][:10],
             # Only the answer step reads the resume index; it waits for any re-indexing still
             # running from the previous turn. Every other path starts immediately.
             "index_ready": lambda: self._index_ready(conversation_id),
