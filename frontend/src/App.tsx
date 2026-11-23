@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Download, Plus, Redo2, Undo2 } from "lucide-react";
 import { api, streamChat } from "./api";
 import ChatPanel from "./components/ChatPanel";
-import ResumePanel from "./components/ResumePanel";
+import ResumePanel, { type Tab } from "./components/ResumePanel";
 import UploadPane from "./components/UploadPane";
 import type {
   ChatMessage,
+  Flow,
   ConversationListItem,
   ConversationState,
   LiveTurn,
@@ -50,6 +51,8 @@ export default function App() {
   const [live, setLive] = useState<LiveTurn | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [flow, setFlow] = useState<Flow | null>(null);
+  const [tab, setTab] = useState<Tab>("resume");
 
   const refreshVersions = useCallback(async (id: string) => {
     setVersions(await api.listVersions(id));
@@ -95,6 +98,8 @@ export default function App() {
     setMessages([]);
     setVersions([]);
     setError(null);
+    setFlow(null);
+    setTab("resume");
   }
 
   function applyState(s: ConversationState) {
@@ -133,6 +138,11 @@ export default function App() {
         setMessages((m) => [...m, event.message]);
         applyState(event);
         break;
+      case "flow": {
+        const { type: _flowType, ...snapshot } = event;
+        setFlow(snapshot);
+        break;
+      }
       case "error":
         setError(event.message);
         break;
@@ -143,6 +153,8 @@ export default function App() {
     if (!conversationId) return;
     setError(null);
     setLive(emptyTurn());
+    setFlow(null);
+    setTab("flow"); // watch the agents execute
     try {
       await streamChat(conversationId, message, jobDescription, handleEvent);
     } catch (e) {
@@ -241,12 +253,20 @@ export default function App() {
             error={error}
             hasJobDescription={!!state?.conversation.context.job_description}
             onSend={send}
+            onViewFlow={(f) => {
+              setFlow(f);
+              setTab("flow");
+            }}
           />
           <ResumePanel
             conversationId={conversationId}
             version={version}
             versions={versions}
             busy={working}
+            tab={tab}
+            onTab={setTab}
+            flow={flow}
+            flowLive={!!live}
             onRestore={(vid) => versionAction(() => api.restore(conversationId, vid))}
           />
         </main>
