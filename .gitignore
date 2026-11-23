@@ -31,3 +31,7 @@ frontend/dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Browser-automation artifacts
+.playwright-mcp/
+*.tsbuildinfo
