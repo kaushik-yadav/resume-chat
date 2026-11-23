@@ -32,7 +32,7 @@ Section Enhancement.
 | Context management (history + resume state across turns) | `backend/app/services/context.py`, conversation memory slots |
 | Agent coordination for multi-step requests | LangGraph workflow, `backend/app/orchestration/graph.py` |
 | Resume version tracking | `backend/app/services/versioning.py` (Firestore) |
-| Display resume changes and agent reasoning | Resume panel (highlights + word diffs), expandable "Agent reasoning" cards |
+| Display resume changes and agent reasoning | Resume panel (highlights + word diffs), expandable "Agent reasoning" cards, **Agent flow** tab: an n8n-style live execution graph (router → agents → reply → version) with per-node steps, timings and LLM calls |
 | Follow-up questions and clarifications | Router memory and follow-up resolution, clarifying questions, Q&A over the resume (RAG) |
 | **Bonus:** undo/redo, compare versions | Toolbar undo/redo, "undo that" in chat, Changes tab compares any two versions, History tab restores |
 | **Bonus:** real-time conversation with typing indicators | Server-Sent Events: plan, per-agent progress, typing indicator, token-streamed reply |
@@ -98,7 +98,7 @@ candidate). Paste `samples/job_description_data_scientist.txt` to try JD matchin
 
 ```bash
 cd backend
-uv run pytest -q                                   # 67 tests, offline (fake LLM, memory store)
+uv run pytest -q                                   # 71 tests, offline (fake LLM, memory store)
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 uv run pytest tests/test_firestore.py   # emulator round trip
 uv run ruff check app tests
 cd ../frontend && npm run build                    # type-check + production build
@@ -148,6 +148,7 @@ backend/app
 │   └── knowledge/*.md      Curated hiring conventions (12 markets) + resume best practices
 ├── services/
 │   ├── chat.py             One chat turn end-to-end (stream, commit version, persist trace, memory)
+│   ├── flow.py             Execution-flow recorder (nodes, timings, per-node LLM calls) for the Agent flow view
 │   ├── context.py          History window + rolling summary
 │   ├── versioning.py       Commit / undo / redo / restore / compare
 │   ├── diff.py             Section-level diffs
@@ -160,7 +161,8 @@ frontend/src
 ├── api.ts                  Typed REST client + SSE stream parser (POST streaming via fetch)
 ├── types.ts                Mirrors backend models and stream events
 └── components/             UploadPane, ChatPanel, Composer, LiveActivity, MessageBubble, AgentCard,
-                            ResumePanel (resume / changes / history), DiffView
+                            ResumePanel (resume / changes / history / agent flow), FlowView,
+                            ResumeSectionBody (line-faithful resume rendering), DiffView
 ```
 
 ### API overview
@@ -170,7 +172,7 @@ frontend/src
 | POST | `/api/conversations` | Create a conversation |
 | GET | `/api/conversations` · `/{id}` | List conversations / get state (messages, current version, undo/redo availability) |
 | POST | `/api/conversations/{id}/resume` | Upload and parse a resume (creates a version) |
-| POST | `/api/conversations/{id}/chat` | Send a message; **SSE stream** of `plan`, `agent_start`, `progress`, `agent_result`, `token`, `version`, `done`, `error` |
+| POST | `/api/conversations/{id}/chat` | Send a message; **SSE stream** of `plan`, `agent_start`, `progress`, `agent_result`, `flow`, `token`, `version`, `done`, `error` |
 | GET | `/api/conversations/{id}/versions[/{vid}]` | Version list / one version |
 | POST | `/api/conversations/{id}/undo` · `/redo` · `/versions/{vid}/restore` | Version control |
 | GET | `/api/conversations/{id}/compare?from=&to=` | Section diffs between two versions |
