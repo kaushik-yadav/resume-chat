@@ -28,6 +28,7 @@ def test_with_section_content_unknown_section():
 
 def test_markdown_and_outline():
     resume = make_resume()
-    assert resume.to_markdown() == "Alex Morgan\nAustin, TX\n\n## Skills\n\nPython, SQL\n"
+    # Hard break ("  ") keeps the two header lines on separate lines when rendered.
+    assert resume.to_markdown() == "Alex Morgan  \nAustin, TX\n\n## Skills\n\nPython, SQL\n"
     assert "[skills] Skills (skills): Python, SQL" in resume.outline()
     assert resume.word_count() == 7

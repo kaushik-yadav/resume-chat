@@ -106,3 +106,45 @@ def test_parse_endpoint(sample_docx):
     assert [s["id"] for s in ok.json()["sections"]] == EXPECTED_IDS
     bad = client.post("/api/resumes/parse", files={"file": ("cv.exe", b"MZ")})
     assert bad.status_code == 422
+
+
+def test_pdf_wrapped_bullets_are_rejoined_without_swallowing_roles():
+    text = "\n".join(
+        [
+            "Jordan Lee",
+            "EXPERIENCE",
+            "Forward Deployed Engineer May 2025 – Jan 2026",
+            "Northwind Labs Remote",
+            "– Owned end-to-end client delivery of agentic AI products, from requirements to",
+            "POCs, demonstrations and production deployment",
+            "– Built a modular Text-to-SQL engine using LangChain, improving accuracy from 33% to",
+            "87%",
+            "– Built a ticket triage agent with human-in-the-loop review",
+            "Applied AI Engineer Intern Feb 2025 – May 2025",
+            "PROJECTS",
+            "– Evaluated CI failure classification using two-model labeling on held-out datasets",
+            "CrossModal-RAG | Multimodal Retrieval System | Python, FAISS",
+            "SKILLS",
+            "AI Engineering: LLMs, RAG, Prompt Engineering, Fine-tuning",
+            "(LoRA, QLoRA), Machine Learning",
+            "Frameworks: LangChain, LangGraph",
+        ]
+    )
+    resume = sectionize(normalize_text(text))  # same path as an uploaded PDF
+    exp = resume.get("experience").content.split("\n")
+    assert exp[2].endswith("from requirements to POCs, demonstrations and production deployment")
+    assert exp[3].endswith("from 33% to 87%")
+    assert exp[5] == "Applied AI Engineer Intern Feb 2025 – May 2025"  # role line kept separate
+    assert resume.get("projects").content.split("\n")[1].startswith("CrossModal-RAG")
+    skills = resume.get("skills").content.split("\n")
+    assert skills == [
+        "AI Engineering: LLMs, RAG, Prompt Engineering, Fine-tuning (LoRA, QLoRA), Machine Learning",
+        "Frameworks: LangChain, LangGraph",
+    ]
+
+
+def test_markdown_block_keeps_role_lines_out_of_bullets():
+    from app.models.resume import markdown_block
+
+    md = markdown_block("Engineer, Acme | 2020\n- Built X\n- Built Y\nAnalyst, Beta | 2018\nRemote")
+    assert md == "Engineer, Acme | 2020\n\n- Built X\n- Built Y\n\nAnalyst, Beta | 2018  \nRemote"

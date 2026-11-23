@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { History, RotateCcw } from "lucide-react";
 import { api } from "../api";
 import type { ResumeVersion, SectionChange, VersionSummary } from "../types";
 import DiffView from "./DiffView";
+import ResumeSectionBody from "./ResumeSectionBody";
 
 type Tab = "resume" | "changes" | "history";
 
@@ -14,15 +13,6 @@ interface Props {
   versions: VersionSummary[];
   onRestore: (versionId: string) => void;
   busy: boolean;
-}
-
-/** Keep the resume's line structure: PDF text often has one item per line without bullets,
- * which plain Markdown would merge into a single paragraph. */
-function withLineBreaks(content: string): string {
-  return content
-    .split("\n")
-    .map((line) => (line.trim() && !/^\s*[-*] /.test(line) ? `${line}  ` : line))
-    .join("\n");
 }
 
 function ResumeView({ version }: { version: ResumeVersion }) {
@@ -46,7 +36,7 @@ function ResumeView({ version }: { version: ResumeVersion }) {
               {s.title}
               {changed.has(s.id) && <span className="changed-tag">● updated</span>}
             </h3>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{withLineBreaks(s.content)}</ReactMarkdown>
+            <ResumeSectionBody content={s.content} />
           </div>
         ),
       )}

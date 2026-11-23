@@ -162,6 +162,57 @@ def classify_heading(line: str) -> SectionKind | None:
     return None
 
 
+# "Jan 2022 - Present", "2019 - 2021", "May 2025 – Jan 2026", "01/2022 - heute" ...
+DATE_RANGE = re.compile(
+    r"(?:\b(?:19|20)\d{2}|\b\d{1,2}/(?:19|20)\d{2})\s*(?:-|–|—|to|a|bis)\s*"
+    r"(?:present|current|now|today|actualidad|presente|heute"
+    r"|[A-Za-zÀ-ÿ]+\.?\s*(?:19|20)\d{2}|\d{1,2}/(?:19|20)\d{2}|(?:19|20)\d{2})",
+    re.IGNORECASE,
+)
+_WRAP_MIN_CHARS = 50
+
+
+def _is_wrapped_continuation(previous: str, line: str) -> bool:
+    """True when ``line`` is the second visual line of the bullet ``previous``.
+
+    PDF text extraction returns one line per *visual* line, so a long bullet arrives split
+    in two. A role line ("Engineer, Acme  May 2025 - Present"), a project title
+    ("Name | Stack") or a blank line must never be glued onto the bullet above it.
+    """
+    if not previous.startswith("- ") or not line or line.startswith("- "):
+        return False
+    if DATE_RANGE.search(line) or " | " in line or len(previous) < _WRAP_MIN_CHARS:
+        return False
+    if line[0].islower():
+        return True
+    last_word = previous.split()[-1]
+    # The bullet stopped mid-phrase: trailing comma or a lowercase word ("... architecture to").
+    return previous.endswith(",") or (last_word.isalpha() and last_word.islower())
+
+
+_SKILL_LABEL = re.compile(r"^[\w][\w &/+.()-]{0,40}:\s")
+
+
+def join_wrapped_lines(lines: list[str], kind: str = "other") -> list[str]:
+    """Re-join bullets (and labelled skill lines) that a PDF split across visual lines."""
+    out: list[str] = []
+    for raw in lines:
+        line = raw.strip()
+        wrapped_skill = (
+            kind == "skills"
+            and out
+            and line
+            and _SKILL_LABEL.match(out[-1])
+            and not _SKILL_LABEL.match(line)
+            and not line.startswith("- ")
+        )
+        if out and (wrapped_skill or _is_wrapped_continuation(out[-1], line)):
+            out[-1] = f"{out[-1]} {line}"
+        else:
+            out.append(line)
+    return out
+
+
 def _slug(kind: str, used: set[str]) -> str:
     base, n = kind, 2
     candidate = base
@@ -185,7 +236,7 @@ def sectionize(text: str) -> Resume:
     current_title, current_kind, buffer = "Header", "header", []
 
     def flush() -> None:
-        content = "\n".join(buffer).strip()
+        content = "\n".join(join_wrapped_lines(buffer, current_kind)).strip()
         if not content and current_kind == "header":
             return
         sid = _slug(current_kind, used)
