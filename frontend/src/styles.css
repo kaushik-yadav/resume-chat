@@ -339,6 +339,10 @@ select option {
   background: color-mix(in srgb, var(--surface) 82%, transparent);
   backdrop-filter: blur(10px);
   min-width: 0;
+  /* backdrop-filter makes the bar a stacking context, so its dropdowns (plan menu) can only
+     rise above the workspace if the bar itself sits above it. */
+  position: relative;
+  z-index: 40;
 }
 .brand {
   display: flex;
