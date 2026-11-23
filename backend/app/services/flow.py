@@ -22,6 +22,7 @@ import time
 from typing import Any
 
 from app.llm.client import LLMTrace
+from app.plans import call_cost
 
 RESPOND_LABELS = {
     "edit": "Summarize changes",
@@ -125,6 +126,8 @@ class FlowRecorder:
                 intent=intent,
                 reasoning=event.get("reasoning", ""),
                 plan=[s["agent"] for s in event.get("steps", [])],
+                decided_by=event.get("decided_by", "llm"),
+                confidence=event.get("confidence"),
             )
             for step in event.get("steps", []):
                 self._add(
@@ -181,9 +184,14 @@ class FlowRecorder:
     def response_done(self, reply: str) -> None:
         self._finish("respond", reply_preview=reply[:240])
 
+    def version_started(self) -> None:
+        self._start("version", "version", "Save version")
+
     def version_saved(self, number: int, label: str, changed: list[str], op: str = "save") -> None:
         title = {"undo": "Undo", "redo": "Redo"}.get(op, "Save version")
-        self._start("version", "version", title)
+        node = self._get("version")
+        if node is None or node["status"] != "running":
+            self._start("version", "version", title)
         self._finish("version", number=number, label=label, changed_sections=changed)
 
     def version_failed(self, message: str) -> None:
@@ -201,17 +209,41 @@ class FlowRecorder:
                     node["detail"]["reason"] = "No resume changes to save"
 
     def snapshot(self) -> dict[str, Any]:
+        """Nodes with their LLM/embedding calls and cost.
+
+        ``cost_usd`` sums completed calls (billed amounts). Calls that were cancelled or failed
+        (e.g. the speculative router call cancelled when the fast classifier answered first)
+        carry *estimated* tokens; their cost is reported separately as an upper bound in
+        ``incomplete_cost_usd`` rather than being mixed into the billed figure.
+        """
         nodes = copy.deepcopy(self.nodes)
+        billed = incomplete = 0.0
         for node in nodes:
-            node["llm"] = [
-                {
-                    "name": c.name,
-                    "model": c.model,
-                    "ms": c.ms,
-                    "input_tokens": c.input_tokens,
-                    "output_tokens": c.output_tokens,
-                }
-                for c in self._trace.calls
-                if c.node == node["id"]
-            ]
-        return {"nodes": nodes, "total_ms": self._ms()}
+            node["llm"] = []
+            for c in self._trace.calls:
+                if c.node != node["id"]:
+                    continue
+                cost = call_cost(c.model, c.input_tokens, c.output_tokens)
+                if c.status == "ok":
+                    billed += cost or 0.0
+                else:
+                    incomplete += cost or 0.0
+                node["llm"].append(
+                    {
+                        "name": c.name,
+                        "model": c.model,
+                        "ms": c.ms,
+                        "input_tokens": c.input_tokens,
+                        "output_tokens": c.output_tokens,
+                        "cost_usd": cost,
+                        "status": c.status,
+                        "estimated": c.estimated,
+                    }
+                )
+            node["cost_usd"] = sum(c["cost_usd"] or 0.0 for c in node["llm"] if c["status"] == "ok")
+        return {
+            "nodes": nodes,
+            "total_ms": self._ms(),
+            "cost_usd": billed,
+            "incomplete_cost_usd": incomplete,
+        }

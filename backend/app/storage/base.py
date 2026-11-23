@@ -40,6 +40,23 @@ class Repository(ABC):
     @abstractmethod
     def list_messages(self, conversation_id: str) -> list[ChatMessage]: ...
 
+    # Targeted reads used on every chat turn. The defaults are correct for any backend;
+    # Firestore overrides them with indexed queries so a turn never loads the whole history.
+    def recent_messages(self, conversation_id: str, limit: int) -> list[ChatMessage]:
+        return self.list_messages(conversation_id)[-limit:] if limit else []
+
+    def find_message(
+        self, conversation_id: str, *, client_id: str | None = None, seq: int | None = None
+    ) -> ChatMessage | None:
+        return next(
+            (
+                m
+                for m in self.list_messages(conversation_id)
+                if (client_id is None or m.client_id == client_id) and (seq is None or m.seq == seq)
+            ),
+            None,
+        )
+
     # ----------------------------------------------------------------- versions
     @abstractmethod
     def add_version(self, conversation_id: str, version: ResumeVersion) -> ResumeVersion: ...
@@ -50,3 +67,6 @@ class Repository(ABC):
 
     @abstractmethod
     def list_versions(self, conversation_id: str) -> list[ResumeVersion]: ...
+
+    def latest_version_number(self, conversation_id: str) -> int:
+        return max((v.number for v in self.list_versions(conversation_id)), default=0)

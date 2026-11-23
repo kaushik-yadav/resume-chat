@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 
@@ -11,6 +12,7 @@ from google.api_core.client_options import ClientOptions
 from google.auth.credentials import AnonymousCredentials
 from google.auth.credentials import Credentials as GoogleCredentials
 from google.cloud.firestore import Client
+from google.cloud.firestore_v1.base_query import FieldFilter
 from google.cloud.firestore_v1.services.firestore import FirestoreClient
 from google.oauth2.credentials import Credentials as OAuthCredentials
 
@@ -116,6 +118,44 @@ def build_client(settings: Settings) -> Client:
     return firestore.client(app)
 
 
+# Large nested fields are stored as JSON strings. Firestore never needs to query inside them,
+# and converting deeply nested maps to and from Firestore values was the dominant cost of
+# loading a conversation (13 messages with traces: ~1.4 s). Documents written before this
+# change (nested maps) are still read correctly.
+_JSON_FIELDS = {"message": ("trace",), "version": ("resume", "changes")}
+
+
+def _encode(data: dict, fields: tuple[str, ...]) -> dict:
+    for name in fields:
+        if name in data:
+            data[f"{name}_json"] = json.dumps(data.pop(name), default=str)
+    return data
+
+
+def _decode(data: dict, fields: tuple[str, ...]) -> dict:
+    for name in fields:
+        raw = data.pop(f"{name}_json", None)
+        if raw is not None:
+            data[name] = json.loads(raw)
+    return data
+
+
+def _encode_message(message: ChatMessage) -> dict:
+    return _encode(message.model_dump(mode="python"), _JSON_FIELDS["message"])
+
+
+def _decode_message(data: dict) -> ChatMessage:
+    return ChatMessage.model_validate(_decode(data, _JSON_FIELDS["message"]))
+
+
+def _encode_version(version: ResumeVersion) -> dict:
+    return _encode(version.model_dump(mode="python"), _JSON_FIELDS["version"])
+
+
+def _decode_version(data: dict) -> ResumeVersion:
+    return ResumeVersion.model_validate(_decode(data, _JSON_FIELDS["version"]))
+
+
 class FirestoreRepository(Repository):
     def __init__(self, client: Client, root_collection: str = "conversations") -> None:
         self._db = client
@@ -145,6 +185,8 @@ class FirestoreRepository(Repository):
         query = (
             self._db.collection(self._root)
             .order_by("updated_at", direction=firestore.Query.DESCENDING)
+            # The listing shows id/title/date/file only; skip memory slots such as a pasted JD.
+            .select(["id", "title", "updated_at", "filename", "created_at"])
             .limit(limit)
         )
         return [Conversation.model_validate(s.to_dict()) for s in query.stream()]
@@ -159,18 +201,42 @@ class FirestoreRepository(Repository):
     # ----------------------------------------------------------------- messages
     def add_message(self, conversation_id: str, message: ChatMessage) -> ChatMessage:
         ref, _ = self._require(conversation_id)
-        ref.collection("messages").document(message.id).set(message.model_dump(mode="python"))
+        ref.collection("messages").document(message.id).set(_encode_message(message))
         return message
 
     def list_messages(self, conversation_id: str) -> list[ChatMessage]:
         ref, _ = self._require(conversation_id)
         docs = ref.collection("messages").order_by("seq").stream()
-        return [ChatMessage.model_validate(d.to_dict()) for d in docs]
+        return [_decode_message(d.to_dict()) for d in docs]
+
+    def recent_messages(self, conversation_id: str, limit: int) -> list[ChatMessage]:
+        if not limit:
+            return []
+        query = (
+            self._conv_ref(conversation_id)
+            .collection("messages")
+            .order_by("seq", direction=firestore.Query.DESCENDING)
+            # History needs only what was said, not each reply's (large) agent trace.
+            .select(["id", "seq", "role", "content", "created_at", "version_id", "client_id"])
+            .limit(limit)
+        )
+        return [_decode_message(d.to_dict()) for d in query.stream()][::-1]
+
+    def find_message(
+        self, conversation_id: str, *, client_id: str | None = None, seq: int | None = None
+    ) -> ChatMessage | None:
+        query = self._conv_ref(conversation_id).collection("messages")
+        if client_id is not None:
+            query = query.where(filter=FieldFilter("client_id", "==", client_id))
+        if seq is not None:
+            query = query.where(filter=FieldFilter("seq", "==", seq))
+        doc = next(iter(query.limit(1).stream()), None)
+        return _decode_message(doc.to_dict()) if doc else None
 
     # ----------------------------------------------------------------- versions
     def add_version(self, conversation_id: str, version: ResumeVersion) -> ResumeVersion:
         ref, _ = self._require(conversation_id)
-        ref.collection("versions").document(version.id).set(version.model_dump(mode="python"))
+        ref.collection("versions").document(version.id).set(_encode_version(version))
         return version
 
     def get_version(self, conversation_id: str, version_id: str) -> ResumeVersion:
@@ -178,12 +244,23 @@ class FirestoreRepository(Repository):
         snap = ref.collection("versions").document(version_id).get()
         if not snap.exists:
             raise NotFoundError(version_id)
-        return ResumeVersion.model_validate(snap.to_dict())
+        return _decode_version(snap.to_dict())
 
     def list_versions(self, conversation_id: str) -> list[ResumeVersion]:
         ref, _ = self._require(conversation_id)
         docs = ref.collection("versions").order_by("number").stream()
-        return [ResumeVersion.model_validate(d.to_dict()) for d in docs]
+        return [_decode_version(d.to_dict()) for d in docs]
+
+    def latest_version_number(self, conversation_id: str) -> int:
+        query = (
+            self._conv_ref(conversation_id)
+            .collection("versions")
+            .order_by("number", direction=firestore.Query.DESCENDING)
+            .select(["number"])  # fetch one small field, not every resume body
+            .limit(1)
+        )
+        doc = next(iter(query.stream()), None)
+        return int(doc.to_dict()["number"]) if doc else 0
 
 
 def create_repository(settings: Settings) -> Repository:
@@ -192,4 +269,10 @@ def create_repository(settings: Settings) -> Repository:
 
         logger.info("Using in-memory storage (data is lost on restart)")
         return MemoryRepository()
-    return FirestoreRepository(build_client(settings))
+    repo = FirestoreRepository(build_client(settings))
+    if settings.storage_cache:
+        from app.storage.cache import CachedRepository
+
+        logger.info("Write-through cache enabled in front of Firestore")
+        return CachedRepository(repo)
+    return repo

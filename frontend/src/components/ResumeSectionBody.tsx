@@ -17,6 +17,19 @@ function inline(text: string): ReactNode[] {
   );
 }
 
+/**
+ * A PDF wraps long bullets onto a second visual line ("…architecture to" / "POCs, …").
+ * Mirrors the backend's join_wrapped_lines so resumes stored by an older parser still
+ * display correctly: the line continues the bullet when the bullet stopped mid-phrase and the
+ * line is not a role (date range) or project title ("Name | Stack").
+ */
+function continuesBullet(bullet: string, line: string): boolean {
+  if (bullet.length < 48 || DATE_TAIL.test(line) || line.includes(" | ")) return false;
+  if (/^[a-z]/.test(line)) return true;
+  const last = bullet.trim().split(/\s+/).pop() ?? "";
+  return bullet.trim().endsWith(",") || /^[a-z]+$/.test(last);
+}
+
 export function toBlocks(content: string): Block[] {
   const blocks: Block[] = [];
   let afterRole = false;
@@ -25,6 +38,14 @@ export function toBlocks(content: string): Block[] {
     if (!line) {
       afterRole = false;
       continue;
+    }
+    const prev = blocks[blocks.length - 1];
+    if (prev?.kind === "bullets" && !/^[-*•]\s+/.test(line)) {
+      const lastItem = prev.items[prev.items.length - 1];
+      if (continuesBullet(lastItem, line)) {
+        prev.items[prev.items.length - 1] = `${lastItem} ${line}`;
+        continue;
+      }
     }
     const bullet = /^[-*•]\s+/.exec(line);
     if (bullet) {

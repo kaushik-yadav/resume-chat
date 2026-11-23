@@ -57,9 +57,8 @@ class VersionService:
         if parent is not None and not changes and parent.resume.language == resume.language:
             return None
 
-        versions = self.repo.list_versions(conversation.id)
         version = ResumeVersion(
-            number=(max((v.number for v in versions), default=0) + 1),
+            number=self.repo.latest_version_number(conversation.id) + 1,
             parent_id=parent.id if parent else None,
             source=source,  # type: ignore[arg-type]
             label=label or ("Original upload" if parent is None else "Updated resume"),

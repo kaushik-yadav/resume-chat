@@ -27,11 +27,17 @@ class Settings(BaseSettings):
     llm_provider: Literal["gemini", "openai", "fake"] = "gemini"
     gemini_api_key: str | None = None
     openai_api_key: str | None = None
-    # Agents do the heavy rewriting; the router/summarizer run on every turn and favor latency.
-    agent_model: str = "gemini-3.8-flash"
-    router_model: str = "gemini-3.8-flash"
+    # Gemini models per role are chosen by the conversation's plan (app/plans.py).
+    default_plan: Literal["free", "pro", "premium"] = "pro"
     openai_agent_model: str = "gpt-5.4-mini"
     openai_router_model: str = "gpt-5.4-mini"
+    openai_reply_model: str = "gpt-5.4-mini"
+    # Used when a model rejects a request as unsupported (e.g. no JSON-schema output).
+    openai_fallback_model: str = "gpt-4.1-mini"
+    # Gemini: the first entry that differs from a role's primary model is its fallback.
+    fallback_models: list[str] = Field(
+        default_factory=lambda: ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
+    )
     # Gemini 3 thinking level / OpenAI reasoning effort: "low" keeps chat responsive.
     agent_reasoning: Literal["minimal", "low", "medium", "high"] = "low"
     router_reasoning: Literal["minimal", "low", "medium", "high"] = "low"
@@ -57,9 +63,13 @@ class Settings(BaseSettings):
     firestore_emulator_host: str | None = None
     # "grpc" (default) or "rest" for networks where gRPC/HTTP2 connections are blocked.
     firestore_transport: Literal["grpc", "rest"] = "grpc"
+    # Write-through in-memory cache of conversations, versions and messages (one process).
+    storage_cache: bool = True
 
     # --- Context engineering --------------------------------------------
     history_window: int = 8  # recent messages passed verbatim to the router
+    # Embedding-based intent classifier in front of the LLM router.
+    fast_classifier: bool = True
     summary_trigger: int = 14  # summarize older turns once history exceeds this
 
 

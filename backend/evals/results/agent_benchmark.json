@@ -1,0 +1,249 @@
+{
+ "at": "2026-11-23T13-45Z",
+ "repeats": 3,
+ "models": "gemini-3.8-flash,gemini-3.5-flash-lite",
+ "summary": {
+  "gemini-3.8-flash/translation": {
+   "success_rate": 1.0,
+   "median_ms": 6648.952999996254,
+   "p95_ms": 6989.791200001491,
+   "billed_usd_per_run": 0.0074475,
+   "warnings_per_run": 0
+  },
+  "gemini-3.5-flash-lite/translation": {
+   "success_rate": 1.0,
+   "median_ms": 1980.314200016437,
+   "p95_ms": 2099.3405999906827,
+   "billed_usd_per_run": 0.0035325,
+   "warnings_per_run": 0
+  },
+  "gemini-3.8-flash/section_enhancement": {
+   "success_rate": 1.0,
+   "median_ms": 5386.76470000064,
+   "p95_ms": 6797.638399992138,
+   "billed_usd_per_run": 0.0015655,
+   "warnings_per_run": 0
+  },
+  "gemini-3.5-flash-lite/section_enhancement": {
+   "success_rate": 1.0,
+   "median_ms": 1700.0526000047103,
+   "p95_ms": 1841.046899993671,
+   "billed_usd_per_run": 0.00073445,
+   "warnings_per_run": 0
+  },
+  "gemini-3.8-flash/jd_matching": {
+   "success_rate": 1.0,
+   "median_ms": 15838.097800005926,
+   "p95_ms": 25972.72150000208,
+   "billed_usd_per_run": 0.0054448,
+   "warnings_per_run": 1
+  },
+  "gemini-3.5-flash-lite/jd_matching": {
+   "success_rate": 1.0,
+   "median_ms": 4999.516900017625,
+   "p95_ms": 5120.269300008658,
+   "billed_usd_per_run": 0.0028220166666666664,
+   "warnings_per_run": 0.3333333333333333
+  },
+  "gemini-3.8-flash/company_research": {
+   "success_rate": 1.0,
+   "median_ms": 13637.630200013518,
+   "p95_ms": 14933.19579999661,
+   "billed_usd_per_run": 0.00523905,
+   "warnings_per_run": 1
+  },
+  "gemini-3.5-flash-lite/company_research": {
+   "success_rate": 1.0,
+   "median_ms": 4216.876599995885,
+   "p95_ms": 4346.610100008547,
+   "billed_usd_per_run": 0.0026476166666666665,
+   "warnings_per_run": 0
+  }
+ },
+ "runs": {
+  "gemini-3.8-flash/translation": [
+   {
+    "ms": 6989.791200001491,
+    "billed_usd": 0.00745125,
+    "edits": 6,
+    "warnings": 0,
+    "llm_calls": 7
+   },
+   {
+    "ms": 6239.250899991021,
+    "billed_usd": 0.007372500000000001,
+    "edits": 6,
+    "warnings": 0,
+    "llm_calls": 7
+   },
+   {
+    "ms": 6648.952999996254,
+    "billed_usd": 0.007518749999999999,
+    "edits": 6,
+    "warnings": 0,
+    "llm_calls": 7
+   }
+  ],
+  "gemini-3.5-flash-lite/translation": [
+   {
+    "ms": 2099.3405999906827,
+    "billed_usd": 0.003495,
+    "edits": 6,
+    "warnings": 0,
+    "llm_calls": 7
+   },
+   {
+    "ms": 1629.8802999954205,
+    "billed_usd": 0.0035425,
+    "edits": 6,
+    "warnings": 0,
+    "llm_calls": 7
+   },
+   {
+    "ms": 1980.314200016437,
+    "billed_usd": 0.00356,
+    "edits": 6,
+    "warnings": 0,
+    "llm_calls": 7
+   }
+  ],
+  "gemini-3.8-flash/section_enhancement": [
+   {
+    "ms": 5386.76470000064,
+    "billed_usd": 0.0015855,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 1
+   },
+   {
+    "ms": 4621.557000005851,
+    "billed_usd": 0.0015855,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 1
+   },
+   {
+    "ms": 6797.638399992138,
+    "billed_usd": 0.0015255000000000002,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 1
+   }
+  ],
+  "gemini-3.5-flash-lite/section_enhancement": [
+   {
+    "ms": 1560.6665999803226,
+    "billed_usd": 0.00071445,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 1
+   },
+   {
+    "ms": 1841.046899993671,
+    "billed_usd": 0.00074695,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 1
+   },
+   {
+    "ms": 1700.0526000047103,
+    "billed_usd": 0.00074195,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 1
+   }
+  ],
+  "gemini-3.8-flash/jd_matching": [
+   {
+    "ms": 14626.292800006922,
+    "billed_usd": 0.0055353,
+    "edits": 1,
+    "warnings": 1,
+    "llm_calls": 2
+   },
+   {
+    "ms": 15838.097800005926,
+    "billed_usd": 0.0053868,
+    "edits": 1,
+    "warnings": 1,
+    "llm_calls": 2
+   },
+   {
+    "ms": 25972.72150000208,
+    "billed_usd": 0.0054123,
+    "edits": 1,
+    "warnings": 1,
+    "llm_calls": 2
+   }
+  ],
+  "gemini-3.5-flash-lite/jd_matching": [
+   {
+    "ms": 4484.313199995086,
+    "billed_usd": 0.00301925,
+    "edits": 1,
+    "warnings": 1,
+    "llm_calls": 2
+   },
+   {
+    "ms": 5120.269300008658,
+    "billed_usd": 0.00294395,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 2
+   },
+   {
+    "ms": 4999.516900017625,
+    "billed_usd": 0.00250285,
+    "edits": 1,
+    "warnings": 0,
+    "llm_calls": 2
+   }
+  ],
+  "gemini-3.8-flash/company_research": [
+   {
+    "ms": 14933.19579999661,
+    "billed_usd": 0.0055563,
+    "edits": 3,
+    "warnings": 1,
+    "llm_calls": 2
+   },
+   {
+    "ms": 13637.630200013518,
+    "billed_usd": 0.0052375500000000005,
+    "edits": 3,
+    "warnings": 1,
+    "llm_calls": 2
+   },
+   {
+    "ms": 12055.741299991496,
+    "billed_usd": 0.0049233,
+    "edits": 3,
+    "warnings": 1,
+    "llm_calls": 2
+   }
+  ],
+  "gemini-3.5-flash-lite/company_research": [
+   {
+    "ms": 4216.876599995885,
+    "billed_usd": 0.00265675,
+    "edits": 3,
+    "warnings": 0,
+    "llm_calls": 2
+   },
+   {
+    "ms": 3938.6203000030946,
+    "billed_usd": 0.00260165,
+    "edits": 3,
+    "warnings": 0,
+    "llm_calls": 2
+   },
+   {
+    "ms": 4346.610100008547,
+    "billed_usd": 0.0026844499999999997,
+    "edits": 3,
+    "warnings": 0,
+    "llm_calls": 2
+   }
+  ]
+ }
+}

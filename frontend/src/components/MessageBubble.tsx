@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import { GitCommitHorizontal, Workflow } from "lucide-react";
 import type { ChatMessage, Flow } from "../types";
 import AgentCard from "./AgentCard";
+import { usd } from "./FlowView";
 
 const INTENT_LABEL: Record<string, string> = {
   edit: "Edit",
@@ -37,6 +38,8 @@ export default function MessageBubble({
               Agent reasoning · {INTENT_LABEL[trace.intent] ?? trace.intent}
               {trace.results.length > 0 && ` · ${trace.results.length} agent${trace.results.length > 1 ? "s" : ""}`}
               {` · ${(trace.ms / 1000).toFixed(1)}s · ${trace.llm.calls} LLM call${trace.llm.calls === 1 ? "" : "s"}`}
+              {trace.cost_usd != null && ` · ${usd(trace.cost_usd)}`}
+              {trace.subscription_plan && ` · ${trace.subscription_plan} plan`}
             </summary>
             <div className="trace-body">
               <div className="router-note">

@@ -7,8 +7,13 @@ into a clarifying question instead of a low-quality guess.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import logging
 import re
-from typing import Literal
+import time
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +21,13 @@ from app.agents.registry import describe_agents
 from app.llm.client import LLM
 from app.models.conversation import ConversationContext
 from app.models.resume import Resume
+from app.orchestration.locales import canonical_locale
+
+if TYPE_CHECKING:
+    from app.orchestration.classifier import IntentClassifier
+    from app.orchestration.route_cache import RouteCache
+
+logger = logging.getLogger(__name__)
 
 AgentName = Literal["company_research", "jd_matching", "translation", "section_enhancement"]
 Intent = Literal["edit", "question", "clarify", "undo", "redo", "chitchat"]
@@ -170,18 +182,102 @@ def fast_path(message: str) -> RoutingDecision | None:
     return RoutingDecision(intent=op, reasoning=f"Recognized a direct '{op}' command.")
 
 
+CHITCHAT = re.compile(
+    r"^\s*(hi|hey|hello|thanks|thank you|thx|great|perfect|ok|okay|cool|good (morning|evening))"
+    r"(\s+(so much|a lot|there|again))?\s*[.!]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def rules(message: str) -> RoutingDecision | None:
+    """Zero-cost deterministic rules: version commands and small talk."""
+    decision = fast_path(message)
+    if decision is None and CHITCHAT.match(message):
+        decision = RoutingDecision(intent="chitchat", reasoning="Recognized small talk.")
+    return decision
+
+
+@dataclass
+class RouteResult:
+    decision: RoutingDecision
+    memory: ConversationContext
+    decided_by: str  # preset | rules | cache | classifier | llm
+    confidence: float | None = None
+    ms: int = 0
+
+
 async def route(
-    llm: LLM, message: str, memory: ConversationContext, resume: Resume, history: str
-) -> tuple[RoutingDecision, ConversationContext]:
-    fast = fast_path(message)
-    if fast is not None:
-        return fast, memory
-    decision = await llm.structured(
-        RoutingDecision,
-        SYSTEM,
-        build_router_prompt(message, memory, resume, history),
-        role="router",
-        name="route",
-    )
+    llm: LLM,
+    message: str,
+    memory: ConversationContext,
+    resume: Resume,
+    history: str,
+    *,
+    preset: str | None = None,
+    cache: RouteCache | None = None,
+    classifier: IntentClassifier | None = None,
+    mode: Literal["cascade", "llm_only"] = "cascade",
+) -> RouteResult:
+    """Cascade from cheapest to most capable; the first tier that is sure decides.
+
+    preset (chip, 0 ms) -> rules (0 ms) -> cache (exact repeat, 0 ms)
+    -> fast classifier (one embedding call) -> LLM router (lite model).
+
+    ``mode="llm_only"`` skips every non-LLM tier (presets, rules, cache, classifier). It exists
+    for evaluation: a baseline that silently used the rules would not be a genuine comparison.
+    """
+    started = time.perf_counter()
+    decision: RoutingDecision | None = None
+    decided_by, confidence = "llm", None
+    cascade = mode == "cascade"
+    key = cache.key(message, memory, resume) if (cascade and cache) else None
+
+    if cascade and preset:
+        from app.orchestration.presets import preset_decision
+
+        decision = preset_decision(preset, resume)
+        decided_by = "preset"
+    if cascade and decision is None and (decision := rules(message)) is not None:
+        decided_by = "rules"
+    if cascade and decision is None and cache and (decision := cache.get(key)) is not None:
+        decided_by = "cache"
+    if decision is None:
+        # Speculative execution: the LLM router starts immediately, in parallel with the fast
+        # classifier. A confident classifier answers in ~0.5 s and the LLM call is cancelled;
+        # otherwise the LLM answer is already in flight, so abstaining adds no latency.
+        llm_task = asyncio.create_task(
+            llm.structured(
+                RoutingDecision,
+                SYSTEM,
+                build_router_prompt(message, memory, resume, history),
+                role="router",
+                name="route",
+            )
+        )
+        if cascade and classifier is not None:
+            try:
+                result = await classifier.classify(message, memory, resume)
+            except Exception:  # the fast path must never break routing
+                logger.exception("Intent classifier failed; using the LLM router")
+                result = None
+            if result and result.decision is not None:
+                decision, decided_by, confidence = result.decision, "classifier", result.confidence
+                llm_task.cancel()
+                # Wait for the cancellation to land so the (partial) call is metered in this
+                # turn's trace - a cancelled speculative call may still be billed for input.
+                with contextlib.suppress(asyncio.CancelledError):
+                    await llm_task
+        if decision is None:
+            decision = await llm_task
+            decided_by = "llm"
+
+    # Every tier must emit the same canonical slot values ("es-MX", never "es_mx" or "es").
+    decision.target_locale = canonical_locale(decision.target_locale)
+    if cache and decided_by in ("classifier", "llm"):
+        cache.put(key, decision)
     memory = apply_memory_updates(decision, memory, message)
-    return normalize(decision, memory, resume), memory
+    if cache and decided_by in ("classifier", "llm"):
+        cache.put(cache.key(message, memory, resume), decision)
+    decision = normalize(decision, memory, resume)
+    ms = int((time.perf_counter() - started) * 1000)
+    return RouteResult(decision, memory, decided_by, confidence, ms)

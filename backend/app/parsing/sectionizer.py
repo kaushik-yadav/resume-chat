@@ -282,3 +282,11 @@ def parse_resume(filename: str, data: bytes) -> Resume:
     from app.parsing.extract import extract_text
 
     return sectionize(extract_text(filename, data))
+
+
+def repair_resume(resume: Resume) -> Resume:
+    """Re-join PDF-wrapped lines in an already-parsed resume (e.g. stored by an older parser)."""
+    repaired = resume.model_copy(deep=True)
+    for section in repaired.sections:
+        section.content = "\n".join(join_wrapped_lines(section.content.split("\n"), section.kind))
+    return repaired

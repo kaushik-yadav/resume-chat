@@ -331,3 +331,42 @@ select.btn { padding-right: 8px; }
 .fd-steps li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
 .fd-llm { border-collapse: collapse; font-size: 12.5px; width: 100%; }
 .fd-llm td { padding: 3px 8px 3px 0; border-top: 1px solid var(--line); }
+
+/* ------------------------------------------------------------------ plan picker */
+.plan-picker { position: relative; }
+.plan-btn.plan-free { color: var(--ink-2); }
+.plan-btn.plan-pro { color: var(--brand-2); border-color: color-mix(in srgb, var(--brand-2) 40%, var(--line)); }
+.plan-btn.plan-premium { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+.plan-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: min(440px, 92vw);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 8px; display: flex; flex-direction: column; gap: 6px;
+}
+.plan-menu-head { font-size: 12px; color: var(--ink-3); padding: 4px 6px; }
+.plan-row {
+  text-align: left; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  border-radius: 10px; padding: 8px 10px;
+}
+.plan-row.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.plan-row:hover { border-color: var(--brand-2); }
+.plan-row-head { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.plan-row-head svg { color: var(--accent); }
+.plan-row table { border-collapse: collapse; font-size: 12px; width: 100%; }
+.plan-row td { padding: 1px 8px 1px 0; }
+.suggestions button svg { vertical-align: -1px; color: var(--accent); }
+
+/* ------------------------------------------------------- session restore / continue */
+.restoring {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  height: 100%; color: var(--ink-2);
+}
+.restoring svg { color: var(--accent); }
+.restoring p { margin: 0; }
+.continue-card {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 16px; padding: 10px 14px;
+  text-align: left; color: var(--ink); background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 10px;
+}
+.continue-card:hover { border-color: var(--accent); }
+.continue-card svg { color: var(--accent); flex: none; }
+.continue-card > span { display: flex; flex-direction: column; }

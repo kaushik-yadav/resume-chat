@@ -91,6 +91,7 @@ class Agent(ABC):
     name: str
     title: str
     description: str  # shown to the router
+    uses_resume_index: bool = False  # reads/writes the conversation's resume vectors
 
     def __init__(self, deps: AgentDeps) -> None:
         self.deps = deps

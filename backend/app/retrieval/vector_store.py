@@ -176,6 +176,45 @@ class VectorStore:
     def search_resume(self, conversation_id: str, query: str, k: int = 3) -> list[Hit]:
         return self._query("resume_chunks", query, k, where={"conversation_id": conversation_id})
 
+    def search_resume_many(
+        self, conversation_id: str, queries: list[str], k: int = 2
+    ) -> list[list[Hit]]:
+        """Batch variant: one embedding request and one Chroma query for all queries."""
+        collection = self._collection("resume_chunks")
+        if not queries or collection.count() == 0:
+            return [[] for _ in queries]
+        embed_many = getattr(self.embedder, "embed_queries", self.embedder.embed_documents)
+        result = collection.query(
+            query_embeddings=embed_many(queries),
+            n_results=min(k, collection.count()),
+            where={"conversation_id": conversation_id},
+        )
+        return [
+            [
+                Hit(text=doc, score=round(1 - dist, 4), metadata=meta or {})
+                for doc, dist, meta in zip(docs, dists, metas, strict=False)
+            ]
+            for docs, dists, metas in zip(
+                result["documents"], result["distances"], result["metadatas"], strict=False
+            )
+        ]
+
+    # ------------------------------------------------------------- static sets
+    def ensure_static(self, name: str, items: list[tuple[str, dict]], digest: str) -> int:
+        """Index a fixed set of texts once; re-index only when ``digest`` changes."""
+        collection = self._collection(name)
+        if (collection.metadata or {}).get("digest") == digest and collection.count():
+            return collection.count()
+        self._client.delete_collection(collection.name)
+        self._client.create_collection(
+            collection.name, metadata={"hnsw:space": "cosine", "digest": digest}
+        )
+        self._add(name, items, [f"{name}-{i}" for i in range(len(items))])
+        return len(items)
+
+    def query_static(self, name: str, query: str, k: int) -> list[Hit]:
+        return self._query(name, query, k)
+
     # ------------------------------------------------------------------ company
     def add_company_research(self, company: str, snippets: list[tuple[str, dict]]) -> None:
         key = company_key(company)

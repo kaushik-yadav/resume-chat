@@ -9,11 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents.base import AgentDeps
 from app.agents.registry import build_agents
+from app.api.catalog import router as catalog_router
 from app.api.conversations import router as conversations_router
 from app.api.health import router as health_router
 from app.api.resumes import router as resumes_router
 from app.config import Settings, get_settings
 from app.llm.client import LLM, create_llm
+from app.orchestration.classifier import IntentClassifier
+from app.orchestration.route_cache import RouteCache
 from app.retrieval.embeddings import create_embedder
 from app.retrieval.vector_store import VectorStore
 from app.services.chat import ChatService
@@ -52,7 +55,13 @@ def build_chat_service(settings: Settings, overrides: Overrides | None = None) -
     vectors.ensure_knowledge_base()
     web = o.web or create_web_search(settings)
     agents = build_agents(AgentDeps(llm=llm, vectors=vectors, web=web), settings)
-    return ChatService(settings, repo, llm, vectors, agents)
+    classifier = None
+    if settings.fast_classifier:
+        classifier = IntentClassifier(vectors)
+        classifier.ensure_index()
+    return ChatService(
+        settings, repo, llm, vectors, agents, route_cache=RouteCache(), classifier=classifier
+    )
 
 
 def create_app(settings: Settings | None = None, overrides: Overrides | None = None) -> FastAPI:
@@ -86,6 +95,7 @@ def create_app(settings: Settings | None = None, overrides: Overrides | None = N
     app.include_router(health_router, prefix="/api")
     app.include_router(resumes_router, prefix="/api")
     app.include_router(conversations_router, prefix="/api")
+    app.include_router(catalog_router, prefix="/api")
     return app
 
 

@@ -16,10 +16,13 @@ from typing import Any
 
 from app.agents.base import Agent
 from app.config import Settings
-from app.llm.client import LLM, start_trace
+from app.llm.client import LLM, current_plan, start_trace
 from app.models.conversation import ChatMessage, Conversation, ResumeVersion, utcnow
+from app.orchestration.classifier import IntentClassifier
 from app.orchestration.graph import build_graph, result_summary
-from app.parsing.sectionizer import parse_resume
+from app.orchestration.route_cache import RouteCache
+from app.parsing.sectionizer import parse_resume, repair_resume
+from app.plans import PLANS, get_plan
 from app.retrieval.vector_store import VectorStore
 from app.services.context import build_history, maybe_summarize
 from app.services.flow import FlowRecorder
@@ -59,18 +62,40 @@ class ChatService:
         llm: LLM,
         vectors: VectorStore,
         agents: dict[str, Agent],
+        *,
+        route_cache: RouteCache | None = None,
+        classifier: IntentClassifier | None = None,
     ) -> None:
         self.settings = settings
         self.repo = repo
         self.llm = llm
         self.vectors = vectors
         self.versions = VersionService(repo)
-        self.graph = build_graph(llm, agents, vectors)
+        self.route_cache = route_cache
+        self.graph = build_graph(llm, agents, vectors, cache=route_cache, classifier=classifier)
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        # Re-indexing the new version runs after "done"; the next turn awaits it first.
+        self._indexing: dict[str, asyncio.Task] = {}
 
     # ------------------------------------------------------------ helpers
     async def _io(self, fn, *args, **kwargs):
         return await asyncio.to_thread(fn, *args, **kwargs)
+
+    def _index_later(self, conversation_id: str, version: ResumeVersion) -> None:
+        """Embed the new version in the background so the reply is not held up by it."""
+        task = asyncio.create_task(
+            self._io(self.vectors.index_resume, conversation_id, version.id, version.resume)
+        )
+        task.add_done_callback(lambda t: t.cancelled() or t.exception())  # logged, not raised
+        self._indexing[conversation_id] = task
+
+    async def _index_ready(self, conversation_id: str) -> None:
+        task = self._indexing.pop(conversation_id, None)
+        if task is not None:
+            try:
+                await task
+            except Exception:
+                logger.exception("Background re-indexing failed")
 
     async def _add_message(self, conv: Conversation, message: ChatMessage) -> ChatMessage:
         conv.message_count += 1
@@ -84,7 +109,19 @@ class ChatService:
             "current_version": version.model_dump(mode="json") if version else None,
             "can_undo": bool(version and version.parent_id),
             "can_redo": bool(conv.redo_stack),
+            "plan": self.plan_of(conv),
         }
+
+    def plan_of(self, conv: Conversation) -> str:
+        return get_plan(conv.plan, self.settings.default_plan).id
+
+    async def set_plan(self, conversation_id: str, plan: str) -> dict[str, Any]:
+        if plan not in PLANS:
+            raise ChatError(f"Unknown plan '{plan}'.")
+        conv = await self._io(self.repo.get_conversation, conversation_id)
+        conv.plan = plan
+        await self._io(self.repo.save_conversation, conv)
+        return self.state_payload(conv, await self._io(self.versions.current, conv))
 
     # ------------------------------------------------------- conversations
     async def create_conversation(self) -> Conversation:
@@ -143,25 +180,74 @@ class ChatService:
                 version = await self._io(self.versions.redo, conv)
             else:
                 version = await self._io(self.versions.restore, conv, version_id)
-            await self._io(self.vectors.index_resume, conv.id, version.id, version.resume)
+            # Undo/redo only move a pointer; re-embedding for search happens in the background.
+            self._index_later(conv.id, version)
             return self.state_payload(conv, version)
 
     # ---------------------------------------------------------------- chat
     async def chat(
-        self, conversation_id: str, text: str, job_description: str | None = None
+        self,
+        conversation_id: str,
+        text: str,
+        job_description: str | None = None,
+        *,
+        client_message_id: str | None = None,
+        preset: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
+        """Run one turn. ``client_message_id`` makes the call idempotent: a retry or a double
+        submit of the same message replays the stored answer instead of running it again."""
         text = (text or "").strip()
         if not text:
             raise ChatError("Message is empty.")
         lock = self._locks[conversation_id]
+        resume_from: ChatMessage | None = None
+        if client_message_id:
+            sent = await self._io(
+                self.repo.find_message, conversation_id, client_id=client_message_id
+            )
+            if sent is not None:
+                # Turns are serialized per conversation, so the answer is the next message.
+                answer = await self._io(self.repo.find_message, conversation_id, seq=sent.seq + 1)
+                if answer is not None and answer.role != "assistant":
+                    answer = None
+                if answer is not None:
+                    async for event in self._replay(conversation_id, sent, answer):
+                        yield event
+                    return
+                if lock.locked():
+                    raise ChatError("This message is already being processed - one moment.")
+                resume_from = sent  # received earlier but never answered (e.g. a crash): run it
         if lock.locked():
             raise ChatError("Still working on your previous message - one moment.")
         async with lock:
-            async for event in self._turn(conversation_id, text, job_description):
+            async for event in self._turn(
+                conversation_id, text, job_description, client_message_id, preset, resume_from
+            ):
                 yield event
 
+    async def _replay(
+        self, conversation_id: str, sent: ChatMessage, answer: ChatMessage
+    ) -> AsyncIterator[dict[str, Any]]:
+        conv = await self._io(self.repo.get_conversation, conversation_id)
+        version = await self._io(self.versions.current, conv)
+        yield {"type": "user_message", "message": sent.model_dump(mode="json"), "replayed": True}
+        if answer.trace and answer.trace.get("flow"):
+            yield {"type": "flow", **answer.trace["flow"]}
+        yield {
+            "type": "done",
+            "replayed": True,
+            "message": answer.model_dump(mode="json"),
+            **self.state_payload(conv, version),
+        }
+
     async def _turn(
-        self, conversation_id: str, text: str, job_description: str | None
+        self,
+        conversation_id: str,
+        text: str,
+        job_description: str | None,
+        client_message_id: str | None = None,
+        preset: str | None = None,
+        resume_from: ChatMessage | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         started = time.perf_counter()
         trace = start_trace()
@@ -170,14 +256,25 @@ class ChatService:
         if current is None:
             raise ChatError("Upload a resume first.")
 
-        history_msgs = await self._io(self.repo.list_messages, conversation_id)
+        history_msgs = await self._io(
+            self.repo.recent_messages, conversation_id, self.settings.history_window + 1
+        )
         memory = conv.context
         if job_description and job_description.strip():
             memory.job_description = job_description.strip()
         content = text if not job_description else f"{text}\n\n[Attached job description]"
-        user_msg = await self._add_message(conv, ChatMessage(role="user", content=content))
+        if resume_from is not None:
+            user_msg = resume_from
+            history_msgs = [m for m in history_msgs if m.seq < resume_from.seq]
+        else:
+            user_msg = await self._add_message(
+                conv, ChatMessage(role="user", content=content, client_id=client_message_id)
+            )
         yield {"type": "user_message", "message": user_msg.model_dump(mode="json")}
+        plan = self.plan_of(conv)
+        current_plan.set(plan)  # every LLM call in this turn uses the plan's models
         flow = FlowRecorder(trace, text, bool(job_description and job_description.strip()))
+        flow.nodes[0]["detail"].update(plan=plan, preset=preset)
         yield {"type": "flow", **flow.snapshot()}
 
         state = {
@@ -185,8 +282,14 @@ class ChatService:
             "user_message": text,
             "history": build_history(history_msgs, memory, self.settings.history_window),
             "memory": memory,
-            "resume": current.resume,
+            # Agents work on a repaired copy (old uploads may hold PDF-wrapped lines).
+            "resume": repair_resume(current.resume),
+            "preset": preset,
+            # Only the answer step reads the resume index; it waits for any re-indexing still
+            # running from the previous turn. Every other path starts immediately.
+            "index_ready": lambda: self._index_ready(conversation_id),
         }
+        prepared = time.perf_counter()
         final: dict[str, Any] = {}
         async for mode, chunk in self.graph.astream(state, stream_mode=["custom", "values"]):
             if mode == "custom":
@@ -196,6 +299,7 @@ class ChatService:
             else:
                 final = chunk
 
+        graph_done = time.perf_counter()
         decision = final["decision"]
         memory = final["memory"]
         reply = final.get("reply", "")
@@ -204,7 +308,7 @@ class ChatService:
         if decision.intent in ("undo", "redo"):
             try:
                 version = await self._io(getattr(self.versions, decision.intent), conv)
-                await self._io(self.vectors.index_resume, conv.id, version.id, version.resume)
+                self._index_later(conv.id, version)
                 reply = (
                     f"{'Reverted' if decision.intent == 'undo' else 'Re-applied'} - you're now on "
                     f"version {version.number} ({version.label})."
@@ -218,6 +322,7 @@ class ChatService:
         results = final.get("results", [])
         changed = [r for r in results if r.changed]
         if changed:
+            flow.version_started()
             agents = [r.agent for r in changed]
             version = await self._io(
                 self.versions.commit,
@@ -228,7 +333,7 @@ class ChatService:
                 agents=agents,
             )
             if version is not None:
-                await self._io(self.vectors.index_resume, conv.id, version.id, version.resume)
+                self._index_later(conv.id, version)
                 flow.version_saved(
                     version.number, version.label, [c.title for c in version.changes]
                 )
@@ -257,12 +362,32 @@ class ChatService:
                 "llm": trace.as_dict(),
                 "ms": int((time.perf_counter() - started) * 1000),
                 "flow": final_flow,
+                "subscription_plan": plan,
+                "timings_ms": {
+                    "prepare": int((prepared - started) * 1000),
+                    "graph": int((graph_done - prepared) * 1000),
+                    "persist": int((time.perf_counter() - graph_done) * 1000),
+                },
+                "cost_usd": final_flow["cost_usd"],
+                "decided_by": next(
+                    (
+                        n["detail"].get("decided_by")
+                        for n in final_flow["nodes"]
+                        if n["id"] == "router"
+                    ),
+                    None,
+                ),
             },
         )
         assistant = await self._add_message(conv, assistant)
 
-        all_messages = [*history_msgs, user_msg, assistant]
         try:
+            # The full history is loaded only when old turns actually need folding into the
+            # rolling summary (rare); a normal turn reads just the recent window.
+            if conv.message_count - memory.summarized_through > self.settings.summary_trigger:
+                all_messages = await self._io(self.repo.list_messages, conversation_id)
+            else:
+                all_messages = []
             memory = await maybe_summarize(
                 self.llm,
                 all_messages,

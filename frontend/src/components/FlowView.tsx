@@ -21,6 +21,20 @@ const KIND_ICONS = {
   version: GitCommitHorizontal,
 };
 
+export const ROUTED_BY: Record<string, string> = {
+  preset: "Suggested action (no classification)",
+  rules: "Rule match (no LLM)",
+  cache: "Cached routing (exact repeat)",
+  classifier: "Fast classifier (embeddings)",
+  llm: "LLM router",
+};
+
+export function usd(v: number | null | undefined): string {
+  if (v == null) return "";
+  if (v === 0) return "$0";
+  return v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`;
+}
+
 function fmt(ms: number | null | undefined): string {
   if (ms == null) return "";
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
@@ -88,10 +102,17 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
           {node.kind === "trigger" && (
             <>
               <p className="quote">{d.message}</p>
+              {d.plan && <span className="chip">plan: {d.plan}</span>}{" "}
+              {d.preset && <span className="chip">suggested action</span>}
               {d.job_description_attached && <span className="chip">job description attached</span>}
             </>
           )}
-          {node.kind === "router" && <p>Classifies intent and plans which agents run, in order.</p>}
+          {node.kind === "router" && (
+            <p>
+              Routing cascade: suggested action → rules → cache → fast classifier → LLM. The first
+              tier that is sure decides.
+            </p>
+          )}
           {node.kind === "agent" && (
             <>
               <p>{d.instruction}</p>
@@ -110,6 +131,10 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
           <h5>Output</h5>
           {node.kind === "router" && d.intent && (
             <>
+              <p>
+                Decided by <span className="chip">{ROUTED_BY[d.decided_by] ?? d.decided_by}</span>
+                {typeof d.confidence === "number" && ` · ${Math.round(d.confidence * 100)}% confidence`}
+              </p>
               <p>
                 Intent <span className="chip">{d.intent}</span>
                 {d.plan?.length > 0 && <> → {d.plan.join(" → ")}</>}
@@ -159,15 +184,26 @@ function NodeDetails({ node, elapsed }: { node: FlowNode; elapsed: ReturnType<ty
 
       {node.llm.length > 0 && (
         <section>
-          <h5>LLM calls · {tokens.toLocaleString()} tokens</h5>
+          <h5>LLM calls · {tokens.toLocaleString()} tokens · {usd(node.cost_usd)}</h5>
           <table className="fd-llm">
             <tbody>
               {node.llm.map((c, i) => (
                 <tr key={i}>
-                  <td><code>{c.name}</code></td>
+                  <td>
+                    <code>{c.name}</code>
+                    {c.status && c.status !== "ok" && (
+                      <span className="chip missing" title="Did not complete; tokens are estimated">
+                        {c.status}
+                      </span>
+                    )}
+                  </td>
                   <td className="sub">{c.model}</td>
                   <td>{fmt(c.ms)}</td>
                   <td className="sub">{c.input_tokens.toLocaleString()} in · {c.output_tokens.toLocaleString()} out</td>
+                  <td title={c.estimated ? "Upper bound: estimated tokens of an incomplete call" : undefined}>
+                    {c.estimated ? "≤" : ""}
+                    {usd(c.cost_usd)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -224,6 +260,8 @@ export default function FlowView({ flow, live }: { flow: Flow | null; live: bool
         <span className="sub">
           {live ? "running" : "finished"} · {fmt(live ? elapsed({ status: "running", start_ms: 0, end_ms: null }) : flow.total_ms)} ·{" "}
           {flow.nodes.length} nodes · {llmCalls} LLM call{llmCalls === 1 ? "" : "s"}
+          {flow.cost_usd != null && ` · ${usd(flow.cost_usd)}`}
+          {!!flow.incomplete_cost_usd && ` (+ ≤${usd(flow.incomplete_cost_usd)} cancelled)`}
         </span>
       </div>
       <div className="flow-canvas" ref={canvas}>
@@ -248,6 +286,10 @@ export default function FlowView({ flow, live }: { flow: Flow | null; live: bool
                   <div className="fn-meta">
                     {t != null ? fmt(t) : node.status}
                     {node.llm.length > 0 && ` · ${node.llm.length} LLM`}
+                    {node.kind === "router" &&
+                      node.detail.decided_by &&
+                      node.detail.decided_by !== "llm" &&
+                      ` · ${node.detail.decided_by}`}
                     {node.steps.length > 0 && ` · ${node.steps.length} steps`}
                   </div>
                   {node.status === "running" && node.steps.length > 0 && (
