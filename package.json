@@ -1,0 +1,11 @@
+{
+  "name": "resume-chat",
+  "private": true,
+  "description": "Developer scripts for the Resume Chat monorepo.",
+  "scripts": {
+    "emulators": "npx -y firebase-tools@15.37.0 emulators:start --only firestore --project demo-resume-chat",
+    "backend": "cd backend && uv run --no-sync uvicorn app.main:app --reload --port 8000",
+    "frontend": "npm --prefix frontend run dev",
+    "test": "cd backend && uv run --no-sync pytest -q"
+  }
+}
