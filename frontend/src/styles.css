@@ -1,0 +1,7 @@
+:root {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1c2430;
+  background: #f6f4ef;
+}
+body { margin: 0; }
+.placeholder { display: grid; place-content: center; min-height: 100vh; text-align: center; }
