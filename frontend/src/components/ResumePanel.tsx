@@ -16,6 +16,15 @@ interface Props {
   busy: boolean;
 }
 
+/** Keep the resume's line structure: PDF text often has one item per line without bullets,
+ * which plain Markdown would merge into a single paragraph. */
+function withLineBreaks(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => (line.trim() && !/^\s*[-*] /.test(line) ? `${line}  ` : line))
+    .join("\n");
+}
+
 function ResumeView({ version }: { version: ResumeVersion }) {
   const changed = new Set(version.changes.map((c) => c.section_id));
   const { resume } = version;
@@ -37,7 +46,7 @@ function ResumeView({ version }: { version: ResumeVersion }) {
               {s.title}
               {changed.has(s.id) && <span className="changed-tag">● updated</span>}
             </h3>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{withLineBreaks(s.content)}</ReactMarkdown>
           </div>
         ),
       )}

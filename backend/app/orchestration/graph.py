@@ -50,7 +50,8 @@ Summarize what the specialist agents just did, based ONLY on the report below:
 - surface important numbers (match score before/after, skill gaps) and every warning the
   user must act on (placeholders to fill, figures to verify)
 - end with one or two specific follow-up suggestions
-Be concise (under ~180 words). Use Markdown. Reply in the language the user wrote in."""
+Only mention things present in the report; never comment on scores, gaps or warnings that are
+absent. Be concise (under ~180 words). Use Markdown. Reply in the language the user wrote in."""
 
 ANSWER_SYSTEM = """You are a friendly, expert resume coach answering a question in a chat.
 Use the resume excerpts, the full outline and the guidance provided. Be specific, honest and
