@@ -46,6 +46,7 @@ class Conversation(BaseModel):
     redo_stack: list[str] = Field(default_factory=list)
     context: ConversationContext = Field(default_factory=ConversationContext)
     message_count: int = 0
+    plan: str = ""  # subscription plan (app/plans.py); '' = server default
 
 
 class ChatMessage(BaseModel):
@@ -53,6 +54,8 @@ class ChatMessage(BaseModel):
     seq: int = 0
     role: Literal["user", "assistant"]
     content: str
+    # Client-generated id of a user message; makes chat requests idempotent.
+    client_id: str | None = None
     created_at: datetime = Field(default_factory=utcnow)
     # Version produced by this turn (assistant messages that changed the resume).
     version_id: str | None = None
