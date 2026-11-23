@@ -1,0 +1,25 @@
+Data Scientist, Payments Risk - Finlytics (fictional company)
+
+About the role
+Finlytics is hiring a Data Scientist to join the Payments Risk team. You will build models that
+detect fraudulent transactions and help product teams make data-driven decisions.
+
+Responsibilities
+- Build, validate and deploy machine learning models for fraud detection and risk scoring
+- Design and analyze A/B tests and communicate results to product and engineering partners
+- Write production-quality Python and SQL; own data pipelines that feed models
+- Partner with engineers to serve models through low-latency APIs
+- Monitor model performance and data drift in production
+
+Requirements
+- 3+ years of experience in data science, analytics or ML engineering
+- Strong Python (pandas, scikit-learn) and SQL skills
+- Experience with experimentation and statistical inference
+- Experience with cloud data warehouses such as BigQuery or Snowflake
+- Clear communication with non-technical stakeholders
+
+Nice to have
+- Experience in payments, fintech or fraud
+- Familiarity with Airflow or other orchestration tools
+- Experience with PyTorch or gradient boosting libraries (XGBoost, LightGBM)
+- Docker and AWS
