@@ -205,8 +205,13 @@ keyword coverage`. After tailoring, only keyword coverage is re-measured. Reword
 improve ATS alignment, but it cannot close a real skill gap, and the score says so.
 
 **Guardrails** (`agents/guardrails.py`, no LLM): every edit is checked for numbers that do
-not appear anywhere in the source resume (invented metrics), large unexplained deletions,
-and, for translations, figures and dates that went missing. Agents are instructed to use
+not appear anywhere in the source resume (invented metrics), tools or names the edited
+section (or, for a selected-line edit, the line itself) never mentioned, large unexplained
+deletions, and, for translations, figures and dates that went missing. A skill listed under
+Skills is not evidence that a particular bullet used it, so "migrated MySQL to PostgreSQL
+using BigQuery" is flagged even though BigQuery appears elsewhere. Job matching also lists
+every posting keyword its edit introduced, so the user confirms each one is true instead of
+it silently raising the keyword score. Agents are instructed to use
 `[add metric: …]` placeholders instead of inventing numbers. Placeholders and flagged figures
 are surfaced to the user as action items. In live testing, the guard caught the model
 deriving "66%" from "6 hours to 2 hours". The prompt was then tightened to forbid derived
