@@ -22,7 +22,7 @@ from app.agents.base import (
     memory_block,
     render_sections,
 )
-from app.agents.guardrails import check_edit, placeholders, style_issues
+from app.agents.guardrails import check_edit, new_terms, placeholders, style_issues
 
 SYSTEM = f"""You are the Section Enhancement Agent of a resume assistant.
 You rewrite specific resume sections so they read like a top-tier resume:
@@ -41,6 +41,8 @@ request. Return exactly one rewrite per line id listed under <lines>:
 - keep each line's underlying facts; a bullet stays one bullet (one line, no line breaks)
 - match the tense, voice and length of the surrounding bullets
 - use <context> only to stay consistent - never rewrite lines that are not listed
+- name no tool, technology, product or company that the line itself does not mention: other
+  lines and the Skills list describe other work, so they are not evidence for this line
 
 {GROUND_RULES}"""
 
@@ -182,9 +184,15 @@ class SectionEnhancementAgent(Agent):
                     lines[index] = new_line  # only this index is ever written
                     rationales.append(rewrite.rationale)
                     changed_lines.append({"before": original.strip(), "after": new_line.strip()})
+                    added = new_terms(original, new_line)
+                    if added:
+                        warnings.append(
+                            f"{section.title}: {', '.join(added)} not in the line you selected - "
+                            "check it's true for this work before using this version."
+                        )
             if rationales:
                 section.content = "\n".join(lines)
-                warnings.extend(check_edit(resume, before, section.content))
+                warnings.extend(check_edit(resume, before, section.content, names=False))
                 applied.append(
                     AppliedEdit(
                         section_id=section.id, title=section.title, rationale=" ".join(rationales)

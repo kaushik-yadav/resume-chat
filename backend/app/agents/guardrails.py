@@ -52,11 +52,35 @@ def dropped_numbers(original: str, edited: str) -> list[str]:
     return sorted({n for n, c in _numbers(original).items() if after[n] < c})
 
 
+# Named things: capitalised or mixed-case words and tech spellings ("BigQuery", "Node.js", "C++").
+NAMED = re.compile(r"(?<![\w.+#])[A-Za-z][\w.+#-]*[\w+#]")
+
+
+def new_terms(original: str, edited: str) -> list[str]:
+    """Names (tools, companies, products) in ``edited`` that ``original`` lacks.
+
+    Checked per selected line and per edited section: a skill listed elsewhere in the resume
+    ("BigQuery" under Skills) does not mean this piece of work used it. The first word of each
+    line and sentence is skipped, since a rewritten bullet starts with a capitalised verb.
+    """
+    known = {w.lower() for w in NAMED.findall(original)}
+    found = []
+    for line in edited.splitlines():
+        for sentence in re.split(r"(?<=[.!?:;])\s+", re.sub(r"^\s*[-*•]\s*", "", line)):
+            for w in NAMED.findall(sentence)[1:]:
+                named = w[0].isupper() or any(c.isupper() for c in w[1:])
+                if named and w.lower() not in known:
+                    found.append(w)
+    return list(dict.fromkeys(found))
+
+
 def placeholders(text: str) -> list[str]:
     return PLACEHOLDER.findall(text)
 
 
-def check_edit(source_resume: Resume, before: ResumeSection, after_content: str) -> list[str]:
+def check_edit(
+    source_resume: Resume, before: ResumeSection, after_content: str, *, names: bool = True
+) -> list[str]:
     """Warnings for one edited section, phrased for the end user."""
     warnings: list[str] = []
     invented = new_numbers(source_resume.to_text(), after_content)
@@ -64,6 +88,12 @@ def check_edit(source_resume: Resume, before: ResumeSection, after_content: str)
         warnings.append(
             f"{before.title}: new figure(s) {', '.join(invented)} not found in your resume - "
             "please verify they are accurate before using this version."
+        )
+    added = new_terms(before.content, after_content) if names else []
+    if added:
+        warnings.append(
+            f"{before.title}: {', '.join(added)} not in this section before - "
+            "check it's true for this work before using this version."
         )
     before_words, after_words = len(before.content.split()), len(after_content.split())
     if before_words >= 20 and after_words < before_words * 0.5:

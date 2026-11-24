@@ -65,7 +65,9 @@ Be strict and honest - an inflated assessment hurts the candidate."""
 TAILOR_SYSTEM = f"""You are the Job Description Matching Agent of a resume assistant.
 Rewrite the listed sections so the candidate's TRUE, relevant experience stands out for this job:
 - lead with the experience and skills that meet the requirements; reorder bullets by relevance
-- mirror the posting's exact keywords where the resume genuinely supports them
+- mirror the posting's exact keywords where the resume genuinely supports them: rename what a
+  bullet already describes ("ETL jobs" -> "ETL pipelines"), but never append a keyword to a
+  bullet that does not show it ("... in data warehouses", "... and queried with SQL")
 - in the skills section, list relevant existing skills first; do not add missing skills
 - never claim a 'missing' requirement; partial matches may be phrased accurately, not inflated
 
@@ -207,6 +209,12 @@ class JDMatchingAgent(Agent):
         updated, applied, warnings = self.apply_edits(resume, plan, targets)
 
         found_after, missing_after = keyword_coverage(job.keywords, updated.to_text())
+        added = [k for k in found_after if k not in found_before]
+        if added:
+            warnings.append(
+                f"Added from the job posting: {', '.join(added)}. Your resume did not mention "
+                "these before - keep each one only if it is true."
+            )
         score_after = match_score(req_score, len(found_after), len(job.keywords))
         gaps = [
             {"name": m.name, "status": m.status} for m in assessment.matches if m.status != "met"
@@ -232,6 +240,7 @@ class JDMatchingAgent(Agent):
                 "skill_gaps": gaps,
                 "keywords_matched": found_after,
                 "keywords_missing": missing_after,
+                "keywords_added": added,
                 "strengths": assessment.strengths,
                 "recommendations": assessment.recommendations,
                 "score_note": "Rewording improves keyword alignment; it cannot close real skill "

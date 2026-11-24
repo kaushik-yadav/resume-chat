@@ -1,7 +1,13 @@
 import pytest
 
 from app.agents.base import AgentContext, AgentDeps, EditPlan
-from app.agents.guardrails import dropped_numbers, new_numbers, placeholders, style_issues
+from app.agents.guardrails import (
+    dropped_numbers,
+    new_numbers,
+    new_terms,
+    placeholders,
+    style_issues,
+)
 from app.agents.jd_matching import keyword_coverage, match_score
 from app.agents.registry import AGENT_NAMES, build_agents, describe_agents
 from app.agents.translation import describe_locale
@@ -113,6 +119,11 @@ async def test_jd_matching_scores_and_tailors(deps, resume, sample_jd):
     assert 0 <= ins["match_score_before"] <= ins["match_score_after"] <= 100
     assert ins["requirements"] and ins["skill_gaps"]
     assert "python" in ins["keywords_matched"]
+    # Keywords the edit introduced are listed for the user to confirm, never silently counted.
+    added = ins["keywords_added"]
+    assert not set(added) & set(keyword_coverage(added, resume.to_text())[0])
+    assert all(k in w for k in added for w in result.warnings if w.startswith("Added from"))
+    assert bool(added) == any(w.startswith("Added from the job posting") for w in result.warnings)
     assert result.memory_updates["target_role"].startswith("Data Scientist")
     assert result.memory_updates["target_company"] == "Finlytics"
 
@@ -177,3 +188,32 @@ def test_guardrail_helpers(resume):
     assert placeholders("a [x] b [y]") == ["[x]", "[y]"]
     issues = style_issues(resume)
     assert any("Experience: weak bullet openers" in i for i in issues)
+
+
+def test_new_terms_flags_tools_borrowed_from_elsewhere():
+    before = "- Helped migrate the transactions database from MySQL to PostgreSQL"
+    # BigQuery is on the resume (Skills) but not in this line: flagged.
+    assert new_terms(
+        before,
+        "- Led the migration of the transactions database from MySQL to PostgreSQL using BigQuery",
+    ) == ["BigQuery"]
+    # Rewording, a new capitalised opener and the line's own names are fine.
+    assert new_terms(before, "- Migrated the transactions database from MySQL to PostgreSQL") == []
+    assert new_terms(
+        "- Wrote ETL jobs in Python", "- Built ETL jobs in Python on AWS with Node.js"
+    ) == ["AWS", "Node.js"]
+
+
+def test_check_edit_flags_a_tool_new_to_the_section():
+    from app.agents.guardrails import check_edit
+    from app.models.resume import Resume, ResumeSection
+
+    before = ResumeSection(
+        id="experience", title="Experience", kind="experience",
+        content="- Wrote ETL jobs in Python to load shipment data into the warehouse",
+    )
+    skills = ResumeSection(id="skills", title="Skills", kind="skills", content="Data: BigQuery")
+    resume = Resume(sections=[before, skills])
+    edited = "- Built ETL pipelines in Python to load shipment data into BigQuery"
+    assert any("BigQuery not in this section" in w for w in check_edit(resume, before, edited))
+    assert check_edit(resume, before, edited.replace("BigQuery", "the warehouse")) == []
