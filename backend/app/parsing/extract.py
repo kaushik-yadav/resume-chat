@@ -65,16 +65,62 @@ def _extract_pdf(data: bytes) -> str:
             except Exception as exc:  # pragma: no cover - depends on file
                 raise ResumeParseError("This PDF is password protected.") from exc
         producer = str((reader.metadata or {}).get("/Producer", ""))
-        if "edited in place by Resume Chat" in producer:
-            # Our original-layout export draws replaced lines after the rest of the page, so
-            # content-stream order (pypdf) would list them last: read in position order instead.
-            import pymupdf
+        import pymupdf
 
-            with pymupdf.open(stream=data, filetype="pdf") as doc:
-                return "\n".join(page.get_text(sort=True) for page in doc)
-        return "\n".join((page.extract_text() or "") for page in reader.pages)
+        with pymupdf.open(stream=data, filetype="pdf") as doc:
+            if "edited in place by Resume Chat" in producer:
+                # Our original-layout export draws replaced lines after the rest of the page, so
+                # content-stream order (pypdf) would list them last: read in position order.
+                text = "\n".join(page.get_text(sort=True) for page in doc)
+            else:
+                text = "\n".join((page.extract_text() or "") for page in reader.pages)
+            return _mark_drawn_bullets(text, doc)
     except PdfReadError as exc:
         raise ResumeParseError(f"Could not read PDF: {exc}") from exc
+
+
+def _squash(line: str) -> str:
+    # NFKC: pypdf keeps ligatures ("Airﬂow") where PyMuPDF splits them ("Airflow").
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", line))[:40]
+
+
+def _mark_drawn_bullets(text: str, doc) -> str:
+    """Prefix "• " to lines whose bullet is a drawn shape rather than a character.
+
+    Browsers' print-to-PDF (and so most HTML resume builders) draw list markers as small
+    filled circles or squares, which leave no trace in the text layer: without this, every
+    bullet in such a resume reads as a plain line and runs into the line above it.
+    """
+    marked: dict[str, int] = {}
+    for page in doc:
+        dots = [
+            d["rect"]
+            for d in page.get_drawings()
+            if d.get("fill") is not None
+            and 1.2 <= d["rect"].width <= 7
+            and 1.2 <= d["rect"].height <= 7
+            and abs(d["rect"].width - d["rect"].height) <= 1.5
+        ]
+        if not dots:
+            continue
+        for block in page.get_text("dict")["blocks"]:
+            for line in block.get("lines", []):
+                x0, y0, _, y1 = line["bbox"]
+                if not any(0 <= x0 - r.x1 <= 14 and y0 <= (r.y0 + r.y1) / 2 <= y1 for r in dots):
+                    continue
+                key = _squash("".join(s["text"] for s in line["spans"]))
+                if key:
+                    marked[key] = marked.get(key, 0) + 1
+    if not marked:
+        return text
+    out = []
+    for line in text.split("\n"):
+        key = _squash(line)
+        if key and marked.get(key) and not _BULLET_LINE.match(line):
+            marked[key] -= 1
+            line = "• " + line.strip()
+        out.append(line)
+    return "\n".join(out)
 
 
 def _iter_block_items(doc: DocxDocument):

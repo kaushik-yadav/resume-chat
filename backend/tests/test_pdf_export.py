@@ -11,7 +11,7 @@ from app.models.resume import Resume, ResumeSection
 from app.parsing.extract import extract_text, normalize_text
 from app.parsing.sectionizer import classify_heading, sectionize
 from app.services import export
-from app.services.pdf_export import _fallback_fonts, _header, parse_entries, to_pdf
+from app.services.pdf_export import _fallback_fonts, _header, _split_date, parse_entries, to_pdf
 
 
 def resume(*sections: tuple[str, str, str], locale: str | None = None) -> Resume:
@@ -158,3 +158,32 @@ def test_symbol_font_bullets_from_word_pdfs():
 )
 def test_headings_found_in_real_resumes(line, kind):
     assert classify_heading(line) == kind
+
+
+@pytest.mark.parametrize(
+    "line,title,date",
+    [
+        (
+            "B.S. Computer Science, University of Texas at Dallas 2015 - 2019",
+            "B.S. Computer Science, University of Texas at Dallas",
+            "2015 - 2019",
+        ),
+        (
+            "Engineer, Acme, Austin, TX Jan 2022 - Present",
+            "Engineer, Acme, Austin, TX",
+            "Jan 2022 - Present",
+        ),
+        ("Ingeniero, Acme ene. 2022 - actualidad", "Ingeniero, Acme", "ene. 2022 - actualidad"),
+        ("Entwickler, X März 2021 - Okt 2023", "Entwickler, X", "März 2021 - Okt 2023"),
+        ("Intern, Foo Dec - Jan 2024", "Intern, Foo", "Dec - Jan 2024"),
+        (
+            "MSc, University of Normandy Expected May 2026",
+            "MSc, University of Normandy",
+            "Expected May 2026",
+        ),
+        ("Analyst, Marketing Co 2019", "Analyst, Marketing Co", "2019"),
+    ],
+)
+def test_only_a_month_may_precede_the_year(line, title, date):
+    # A place name before the year ("Dallas 2015") stays in the title.
+    assert _split_date(line) == (title, date)
