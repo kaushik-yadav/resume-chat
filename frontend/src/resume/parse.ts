@@ -3,10 +3,27 @@
 import type { Resume, ResumeSection, ResumeVersion } from "../types";
 
 // "Jan 2022 – Present", "2019 - 2021", "May 2025 – Jan 2026", "01/2022 - heute", "2024-10 to Present",
-// and month spans inside one year: "Dec – Jan 2024", "June –July 2023". Same rules as the PDF export.
-const DATE_RANGE =
-  /((?:[A-Za-zÀ-ÿ]+\.?\s*)?(?:\d{1,2}\/)?(?:19|20)\d{2}(?:-\d{2})?\s*(?:-|–|—|to|a|bis)\s*(?:present|current|now|today|actualidad|presente|heute|aujourd'hui|(?:[A-Za-zÀ-ÿ]+\.?\s*)?(?:\d{1,2}\/)?(?:19|20)\d{2}(?:-\d{2})?)|[A-Za-zÀ-ÿ]{3,}\.?\s*[-–—]\s*[A-Za-zÀ-ÿ]{3,}\.?\s+(?:19|20)\d{2})\s*$/i;
-const SINGLE_DATE = /((?:[A-Za-z]+\.?\s+)?(?:19|20)\d{2})\s*$/;
+// and month spans inside one year: "Dec – Jan 2024", "June –July 2023". Same rules as the PDF export
+// (backend/app/services/pdf_export.py). Only a month or season may precede a year, so
+// "University of Texas at Dallas 2015 - 2019" keeps "Dallas" in the title.
+const MONTH =
+  "(?<![A-Za-zÀ-ÿ])(?:jan(?:uary|uar|vier|eiro|v)?|ene(?:ro)?|feb(?:ruary|ruar|rero)?|f[ée]v(?:rier|ereiro|r)?" +
+  "|mar(?:ch|zo|s|ço)?|m[äa]rz|apr(?:il)?|abr(?:il)?|avr(?:il)?|may(?:o)?|mai(?:o)?" +
+  "|jun(?:e|i|io|ho)?|juin|jul(?:y|i|io|ho)?|juil(?:let)?|aug(?:ust)?|ago(?:sto)?|ao[uû]t" +
+  "|sep(?:tember|tiembre|tembre|tembro|t)?|set(?:embro)?|oct(?:ober|ubre|obre)?|okt(?:ober)?" +
+  "|out(?:ubro)?|nov(?:ember|iembre|embre|embro)?|dec(?:ember)?|d[ée]c(?:embre)?|dez(?:ember|embro)?" +
+  "|dic(?:iembre)?|spring|summer|fall|autumn|winter)\\.?(?![A-Za-zÀ-ÿ])";
+const YEAR = "(?:\\d{1,2}\\/)?(?:19|20)\\d{2}(?:-\\d{2})?";
+const DATE_RANGE = new RegExp(
+  `((?:${MONTH}\\s*)?${YEAR}\\s*(?:-|–|—|to|a|bis)\\s*` +
+    `(?:present|current|now|today|actualidad|presente|heute|aujourd'hui|(?:${MONTH}\\s*)?${YEAR})` +
+    `|${MONTH}\\s*[-–—]\\s*${MONTH}\\s+(?:19|20)\\d{2})\\s*$`,
+  "i",
+);
+const SINGLE_DATE = new RegExp(
+  `((?:(?:expected|since|until|graduated)\\s+)?(?:${MONTH}\\s+)?(?:19|20)\\d{2})\\s*$`,
+  "i",
+);
 const BULLET = /^\s*[-*•▪◦]\s+/;
 
 export type ContactKind = "email" | "phone" | "link" | "location" | "text";

@@ -56,17 +56,31 @@ RULE = (196, 201, 208)
 
 BULLET = re.compile(r"^\s*[-*•▪◦]\s+")
 BOLD = re.compile(r"\*\*(.+?)\*\*")
+# Only a month or season may precede a year in a date: "University of Texas at Dallas 2015 - 2019"
+# keeps "Dallas" in the title. English, Spanish, German, French and Portuguese, since resumes are
+# translated. Kept in sync with frontend/src/resume/parse.ts.
+MONTH = (
+    r"(?<![A-Za-zÀ-ÿ])(?:jan(?:uary|uar|vier|eiro|v)?|ene(?:ro)?|feb(?:ruary|ruar|rero)?|f[ée]v(?:rier|ereiro|r)?"
+    r"|mar(?:ch|zo|s|ço)?|m[äa]rz|apr(?:il)?|abr(?:il)?|avr(?:il)?|may(?:o)?|mai(?:o)?"
+    r"|jun(?:e|i|io|ho)?|juin|jul(?:y|i|io|ho)?|juil(?:let)?|aug(?:ust)?|ago(?:sto)?|ao[uû]t"
+    r"|sep(?:tember|tiembre|tembre|tembro|t)?|set(?:embro)?|oct(?:ober|ubre|obre)?|okt(?:ober)?"
+    r"|out(?:ubro)?|nov(?:ember|iembre|embre|embro)?|dec(?:ember)?|d[ée]c(?:embre)?|dez(?:ember|embro)?"
+    r"|dic(?:iembre)?|spring|summer|fall|autumn|winter)\.?(?![A-Za-zÀ-ÿ])"
+)
 DATE_RANGE = re.compile(
     # "Jan 2022 - Present", "2019 - 2021", "01/2022 - heute", "September 2022-2026"
-    r"((?:[A-Za-zÀ-ÿ]+\.?\s*)?(?:\d{1,2}/)?(?:19|20)\d{2}(?:-\d{2})?\s*(?:-|–|—|to|a|bis)\s*"
+    rf"((?:{MONTH}\s*)?(?:\d{{1,2}}/)?(?:19|20)\d{{2}}(?:-\d{{2}})?\s*(?:-|–|—|to|a|bis)\s*"
     r"(?:present|current|now|today|actualidad|presente|heute|aujourd'hui|"
-    r"(?:[A-Za-zÀ-ÿ]+\.?\s*)?(?:\d{1,2}/)?(?:19|20)\d{2}(?:-\d{2})?)"
+    rf"(?:{MONTH}\s*)?(?:\d{{1,2}}/)?(?:19|20)\d{{2}}(?:-\d{{2}})?)"
     # "Dec - Jan 2024", "June -July 2023": a month span inside one year
-    r"|[A-Za-zÀ-ÿ]{3,}\.?\s*[-–—]\s*[A-Za-zÀ-ÿ]{3,}\.?\s+(?:19|20)\d{2})\s*$",
+    rf"|{MONTH}\s*[-–—]\s*{MONTH}\s+(?:19|20)\d{{2}})\s*$",
     re.IGNORECASE,
 )
 PHONE = re.compile(r"\+?[\d\s().-]{7,}")
-SINGLE_DATE = re.compile(r"((?:[A-Za-z]+\.?\s+)?(?:19|20)\d{2})\s*$")
+SINGLE_DATE = re.compile(
+    rf"((?:(?:expected|since|until|graduated)\s+)?(?:{MONTH}\s+)?(?:19|20)\d{{2}})\s*$",
+    re.IGNORECASE,
+)
 ENTRY_KINDS = {"experience", "projects", "education", "volunteer", "publications", "certifications"}
 
 

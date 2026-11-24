@@ -35,6 +35,23 @@ def test_docx_list_paragraphs_become_bullets(sample_docx):
     assert "- Helped migrate the transactions database from MySQL to PostgreSQL" in text
 
 
+def test_pdf_drawn_bullets_become_bullets(sample_pdf):
+    # The sample was printed from HTML, so its list markers are drawn circles with no text.
+    resume = parse_resume("r.pdf", sample_pdf)
+    experience = resume.get("experience").content.splitlines()
+    assert sum(line.startswith("- ") for line in experience) == 8
+    assert (
+        "- Wrote ETL jobs in Python and Airflow to load shipment data into the warehouse"
+        in experience
+    )
+    # A wrapped bullet is one line again, not a run-on paragraph.
+    assert any(
+        line.startswith("- Trained") and line.endswith("small FastAPI app.")
+        for line in resume.get("projects").content.splitlines()
+    )
+    assert not any(line.startswith("- ") for line in resume.get("education").content.splitlines())
+
+
 def test_docx_tables_are_read_in_order():
     doc = Document()
     doc.add_paragraph("Jordan Lee")
