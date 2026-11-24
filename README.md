@@ -16,6 +16,16 @@ version as PDF, DOCX or Markdown.
 Company Research & Optimization, Job Description Matching, Translation & Localization, and
 Section Enhancement.
 
+## Architecture
+
+![Resume Chat architecture: a message goes through the router cascade to the specialist agents, which call Gemini, Tavily and Chroma; guardrails check every edit, a new version is saved in Firestore, and the reply streams back](docs/architecture.png)
+
+Uploads are parsed without an LLM and embedded into Chroma. Each message goes through a routing
+cascade (rules, cache and an embedding classifier before the LLM), and the planned agents run one
+after another, each on the previous agent's output. Deterministic guardrails check every edit
+before it is saved as an immutable version, and the reply streams back over Server-Sent Events.
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the full design.
+
 | Doc | What it covers |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Agent architecture, turn lifecycle, context-engineering choices, tool/API choices, measured latency |
